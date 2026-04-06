@@ -1,0 +1,2428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🏠 라이프맵 — AI 생활 인프라 기반 아파트 추천</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ===== DESIGN SYSTEM ===== */
+:root {
+  --bg: #f0f4ff;
+  --header: #1e3a5f;
+  --accent: #2563eb;
+  --card-bg: #ffffff;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --radius-card: 16px;
+  --radius-btn: 999px;
+  --text-main: #1e293b;
+  --text-sub: #64748b;
+  --border: #e2e8f0;
+
+  --infra-subway: #3b82f6;
+  --infra-elementary: #f97316;
+  --infra-hospital: #ef4444;
+  --infra-park: #10b981;
+  --infra-retail: #8b5cf6;
+  --infra-highschool: #f59e0b;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: #dce8f7;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== APP WRAPPER ===== */
+#app {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  height: 100vh;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.2);
+}
+
+/* ===== SCREEN SYSTEM ===== */
+.screen {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.screen.active {
+  transform: translateX(0%);
+}
+
+.screen.exit-left {
+  transform: translateX(-30%);
+}
+
+/* ===== SCROLLABLE CONTENT ===== */
+.screen-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 20px;
+}
+
+/* ===== COMMON COMPONENTS ===== */
+.btn-primary {
+  width: 100%;
+  padding: 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-btn);
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: -0.3px;
+}
+
+.btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(37,99,235,0.3); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-ghost {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius-btn);
+  transition: background 0.15s;
+}
+
+.btn-ghost:hover { background: rgba(37,99,235,0.08); }
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+/* ===== FORM COMPONENTS ===== */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: 'Noto Sans KR', sans-serif;
+  color: var(--text-main);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus { border-color: var(--accent); }
+.form-input.error { border-color: #ef4444; }
+.form-error { font-size: 12px; color: #ef4444; margin-top: 5px; display: none; }
+.form-error.show { display: block; }
+
+/* ===== SCREEN 1: SIGNUP ===== */
+#screen-signup {
+  transform: translateX(0%);
+}
+
+.signup-header {
+  padding: 48px 24px 28px;
+  text-align: center;
+  background: linear-gradient(160deg, #eef2ff 0%, #f0f4ff 100%);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.signup-logo {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--header);
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+}
+
+.signup-sub {
+  font-size: 14px;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+
+.signup-form {
+  padding: 0 24px;
+}
+
+.address-input-wrap {
+  position: relative;
+}
+
+.address-input-wrap .form-input {
+  padding-right: 110px;
+}
+
+.btn-address {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-address:hover { background: #1d4ed8; }
+
+.address-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 100;
+  overflow: hidden;
+  display: none;
+}
+
+.address-dropdown.show { display: block; }
+
+.address-option {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--text-main);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.address-option:last-child { border-bottom: none; }
+.address-option:hover { background: #f8faff; }
+.address-option::before { content: "📍 "; }
+
+.signup-footer {
+  padding: 20px 24px;
+}
+
+.signup-link {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.signup-link a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ===== SCREEN 2: ONBOARDING ===== */
+.onboard-header {
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  position: relative;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text-main);
+  padding: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.onboard-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-main);
+  flex: 1;
+}
+
+.progress-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.dot.active { background: var(--accent); }
+
+.onboard-guide {
+  padding: 20px 24px 16px;
+}
+
+.onboard-guide-main {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 6px;
+  letter-spacing: -0.3px;
+}
+
+.onboard-guide-sub {
+  font-size: 13px;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+
+/* ===== INFRA CARDS GRID ===== */
+.infra-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 0 24px 16px;
+}
+
+.infra-card {
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 16px 14px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  user-select: none;
+}
+
+.infra-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.infra-card:active { transform: translateY(0); }
+
+.infra-card.selected {
+  border-width: 2px;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+.infra-card-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.2s;
+}
+
+.infra-card.selected .infra-card-badge {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.infra-card-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.infra-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.infra-card-desc {
+  font-size: 11px;
+  color: var(--text-sub);
+  line-height: 1.4;
+}
+
+/* ===== PRIORITY PREVIEW ===== */
+.priority-preview {
+  margin: 0 24px 16px;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  min-height: 50px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.priority-preview-label {
+  font-size: 12px;
+  color: var(--text-sub);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.priority-chip {
+  padding: 5px 10px;
+  border-radius: var(--radius-btn);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.priority-arrow {
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+/* ===== PRICE ACCORDION ===== */
+.price-accordion {
+  margin: 0 24px 16px;
+  background: #fff;
+  border-radius: var(--radius-card);
+  border: 1.5px solid var(--border);
+  overflow: hidden;
+}
+
+.price-accordion-header {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.price-accordion-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.accordion-arrow {
+  font-size: 12px;
+  color: var(--text-sub);
+  transition: transform 0.2s;
+}
+
+.price-accordion.open .accordion-arrow { transform: rotate(180deg); }
+
+.price-accordion-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.price-accordion.open .price-accordion-body {
+  max-height: 300px;
+}
+
+.price-body-inner {
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.price-row {
+  margin-bottom: 16px;
+}
+
+.price-row:last-child { margin-bottom: 0; }
+
+.price-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.price-row-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #cbd5e1;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+.price-slider-wrap {
+  display: none;
+  padding-top: 4px;
+}
+
+.price-slider-wrap.show { display: block; }
+
+.price-range-display {
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.range-slider {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) 0%, var(--accent) 50%, var(--border) 50%);
+  outline: none;
+}
+
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.4);
+}
+
+.price-notice {
+  font-size: 12px;
+  color: var(--text-sub);
+  background: #f8faff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+.onboard-footer {
+  padding: 16px 24px 32px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ===== SCREEN 3: MAP ===== */
+#screen-map {
+  background: var(--bg);
+}
+
+.map-header {
+  background: #fff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.map-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.map-logo {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--header);
+  white-space: nowrap;
+}
+
+.map-location-chip {
+  background: #f0f4ff;
+  color: var(--header);
+  border-radius: var(--radius-btn);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.btn-settings {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+/* ===== PRIORITY BADGE BAR ===== */
+.priority-bar {
+  background: #fff;
+  padding: 10px 16px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-behavior: smooth;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
+}
+
+.priority-bar::-webkit-scrollbar { display: none; }
+
+.priority-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-btn);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.priority-badge-num {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+/* ===== MAP AREA ===== */
+.map-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #dce8f7;
+  min-height: 120px;
+}
+
+.map-svg-bg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0; left: 0;
+}
+
+/* Map road pattern */
+.map-road { stroke: rgba(255,255,255,0.6); stroke-width: 3; fill: none; }
+.map-road-main { stroke: rgba(255,255,255,0.9); stroke-width: 5; fill: none; }
+
+/* ===== MARKERS ===== */
+.marker {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 5;
+  user-select: none;
+}
+
+.marker:hover { transform: translate(-50%, -50%) scale(1.1); z-index: 6; }
+
+.marker.active {
+  width: 44px;
+  height: 44px;
+  border-width: 3px;
+  box-shadow: 0 4px 16px rgba(37,99,235,0.4);
+  z-index: 7;
+  transform: translate(-50%, -55%);
+}
+
+.marker.score-high { border-color: #10b981; color: #10b981; }
+.marker.score-mid { border-color: #f59e0b; color: #f59e0b; }
+.marker.score-low { border-color: #f97316; color: #f97316; }
+
+.marker-star {
+  position: absolute;
+  top: -10px;
+  right: -6px;
+  font-size: 14px;
+}
+
+.marker-popup {
+  position: absolute;
+  top: -70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 20;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.marker-popup::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  background: #1e293b;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.marker.active .marker-popup { display: block; }
+
+/* Map Controls */
+.map-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+}
+
+.map-ctrl-btn {
+  width: 36px;
+  height: 36px;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  color: var(--text-main);
+  transition: all 0.15s;
+}
+
+.map-ctrl-btn:hover { background: #f8faff; }
+
+.map-location-btn {
+  position: absolute;
+  left: 12px;
+  bottom: 16px;
+  width: 36px;
+  height: 36px;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+
+/* Price Filter Float */
+.price-filter-float {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+}
+
+.btn-price-filter {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+  color: var(--text-main);
+  position: relative;
+}
+
+.btn-price-filter:hover { background: #f8faff; }
+
+.btn-price-filter.active { border-color: var(--accent); color: var(--accent); }
+
+.price-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: none;
+}
+
+.btn-price-filter.active .price-dot { display: block; }
+
+.price-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+  padding: 16px;
+  display: none;
+  z-index: 20;
+  border: 1.5px solid var(--border);
+}
+
+.price-filter-dropdown.show { display: block; }
+
+.price-filter-row {
+  margin-bottom: 14px;
+}
+
+.price-filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+}
+
+.price-filter-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 6px;
+  text-align: right;
+}
+
+.price-filter-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-apply {
+  flex: 1;
+  padding: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-btn);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+}
+
+.btn-reset {
+  flex: 1;
+  padding: 8px;
+  background: var(--border);
+  color: var(--text-sub);
+  border: none;
+  border-radius: var(--radius-btn);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+}
+
+/* ===== BOTTOM SHEET ===== */
+.bottom-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+  z-index: 15;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  height: 200px;
+}
+
+.bottom-sheet.expanded {
+  height: 55%;
+}
+
+.bottom-sheet-handle-area {
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.bottom-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: #cbd5e1;
+}
+
+.bottom-sheet-header {
+  padding: 0 16px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.bottom-sheet-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.sort-select {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-btn);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-family: 'Noto Sans KR', sans-serif;
+  color: var(--text-main);
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+}
+
+.cards-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  gap: 12px;
+  padding: 0 16px 16px;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  min-height: 0;
+}
+
+.cards-scroll::-webkit-scrollbar { display: none; }
+
+/* ===== APARTMENT CARD ===== */
+.apt-card {
+  flex-shrink: 0;
+  width: 150px;
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  scroll-snap-align: start;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.apt-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+.apt-card.active { border-color: var(--accent); box-shadow: 0 4px 16px rgba(37,99,235,0.2); }
+.apt-card.out-of-range { opacity: 0.35; }
+
+.apt-card-rank {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rank-badge {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-sub);
+}
+
+.rank-badge.r1 { color: #f59e0b; }
+.rank-badge.r2 { color: #94a3b8; }
+.rank-badge.r3 { color: #c97132; }
+
+.score-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.score-bar {
+  flex: 1;
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #10b981, #2563eb);
+  transition: width 0.5s;
+}
+
+.score-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.apt-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+  word-break: keep-all;
+}
+
+.apt-location {
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+.apt-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--header);
+}
+
+.apt-specs {
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+.apt-infra-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.infra-mini-chip {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: var(--radius-btn);
+  background: #f1f5f9;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.btn-detail {
+  width: 100%;
+  padding: 8px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-btn);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-detail:hover { transform: scale(1.02); }
+
+.out-range-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-btn);
+}
+
+/* ===== SCREEN 4: DETAIL ===== */
+.detail-header {
+  background: #fff;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+  flex-shrink: 0;
+}
+
+.detail-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 20px;
+}
+
+.detail-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  background: #fff;
+  border-radius: var(--radius-btn);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.detail-section-title {
+  padding: 8px 20px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* ===== INFRA DETAIL CARDS ===== */
+.infra-detail-cards {
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.infra-detail-card {
+  background: #fff;
+  border-radius: var(--radius-card);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--border);
+  transition: border-color 0.2s;
+}
+
+.infra-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.infra-rank-badge {
+  padding: 3px 10px;
+  border-radius: var(--radius-btn);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.infra-detail-icon {
+  font-size: 18px;
+}
+
+.infra-detail-name-sec {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.infra-facility-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.infra-facility-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.assigned-badge {
+  background: #10b981;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-btn);
+}
+
+/* ===== DISTANCE BAR ===== */
+.dist-bar-wrap {
+  margin-bottom: 10px;
+}
+
+.dist-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.dist-text {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.dist-walk {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.dist-bar {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dist-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dist-bar-fill.close { background: #10b981; }
+.dist-bar-fill.mid { background: #f59e0b; }
+.dist-bar-fill.far { background: #f97316; }
+
+.infra-score-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.infra-score-label {
+  font-size: 12px;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.infra-score-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.infra-score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s;
+}
+
+.infra-score-num {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* ===== INACTIVE INFRA SECTION ===== */
+.inactive-infra-section {
+  padding: 16px 20px 0;
+}
+
+.inactive-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin-bottom: 10px;
+  padding: 0;
+}
+
+.inactive-infra-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.infra-detail-card.inactive {
+  opacity: 0.55;
+  border-left-color: #cbd5e1;
+}
+
+.detail-footer {
+  padding: 20px;
+  padding-bottom: 36px;
+  flex-shrink: 0;
+}
+
+/* ===== UTILITY ===== */
+.no-results-msg {
+  display: none;
+  padding: 20px;
+  text-align: center;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pop {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.infra-card { animation: fadeInUp 0.3s ease both; }
+.infra-card:nth-child(1) { animation-delay: 0.0s; }
+.infra-card:nth-child(2) { animation-delay: 0.05s; }
+.infra-card:nth-child(3) { animation-delay: 0.1s; }
+.infra-card:nth-child(4) { animation-delay: 0.15s; }
+.infra-card:nth-child(5) { animation-delay: 0.2s; }
+.infra-card:nth-child(6) { animation-delay: 0.25s; }
+
+.marker { animation: pop 0.3s ease both; }
+
+.apt-card { animation: fadeInUp 0.3s ease both; }
+
+/* Scrollbar Customization */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ SCREEN 1: SIGNUP ============ -->
+  <div class="screen active" id="screen-signup" data-screen="signup">
+    <div class="screen-scroll">
+      <div class="signup-header">
+        <div style="font-size:64px;margin-bottom:12px;line-height:1;">🏠</div>
+        <div class="signup-logo">라이프맵</div>
+        <div class="signup-sub">내 생활 스타일에 맞는 동네를 찾아드려요</div>
+        <div style="display:flex;justify-content:center;gap:16px;margin-top:16px;flex-wrap:wrap;">
+          <span style="background:#fff;border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--text-sub);">🚇 역세권</span>
+          <span style="background:#fff;border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--text-sub);">🎒 초품아</span>
+          <span style="background:#fff;border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--text-sub);">🏥 의세권</span>
+          <span style="background:#fff;border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--text-sub);">🌳 숲세권</span>
+        </div>
+      </div>
+
+      <form class="signup-form" id="signup-form" onsubmit="return false;" autocomplete="on">
+        <div class="form-group">
+          <label class="form-label" for="inp-name">이름</label>
+          <input class="form-input" type="text" id="inp-name" name="name" placeholder="홍길동" autocomplete="name">
+          <div class="form-error" id="err-name">필수 항목입니다</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="inp-email">이메일</label>
+          <input class="form-input" type="email" id="inp-email" name="email" placeholder="example@email.com" autocomplete="email">
+          <div class="form-error" id="err-email">필수 항목입니다</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="inp-pw">비밀번호</label>
+          <input class="form-input" type="password" id="inp-pw" name="password" placeholder="8자 이상" autocomplete="new-password">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">현재 거주지 주소</label>
+          <div class="address-input-wrap" style="position:relative;">
+            <input class="form-input" type="text" id="inp-address" name="address" placeholder="예: 서울시 강남구 개포동" readonly autocomplete="off">
+            <button class="btn-address" id="btn-address-search" type="button">📍 주소 찾기</button>
+            <div class="address-dropdown" id="address-dropdown">
+              <div class="address-option" data-addr="서울시 강남구 개포동">서울시 강남구 개포동</div>
+              <div class="address-option" data-addr="서울시 서초구 반포동">서울시 서초구 반포동</div>
+              <div class="address-option" data-addr="서울시 송파구 잠실동">서울시 송파구 잠실동</div>
+              <div class="address-option" data-addr="서울시 마포구 공덕동">서울시 마포구 공덕동</div>
+              <div class="address-option" data-addr="서울시 양천구 목동">서울시 양천구 목동</div>
+            </div>
+          </div>
+          <div class="form-error" id="err-address">필수 항목입니다</div>
+        </div>
+      </form>
+    </div>
+
+    <div class="signup-footer">
+      <button class="btn-primary" id="btn-signup-next">다음 단계 → 생활 우선순위 설정</button>
+      <div class="signup-link">이미 계정이 있으신가요? <a href="#">로그인</a></div>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 2: ONBOARDING ============ -->
+  <div class="screen" id="screen-onboarding" data-screen="onboarding">
+    <div class="onboard-header">
+      <button class="btn-back" id="btn-back-signup">←</button>
+      <span class="onboard-title">생활 우선순위 설정</span>
+      <div class="progress-dots">
+        <div class="dot"></div>
+        <div class="dot active"></div>
+      </div>
+    </div>
+
+    <div class="screen-scroll">
+      <div class="onboard-guide">
+        <div class="onboard-guide-main">중요한 생활 인프라를 선택해주세요</div>
+        <div class="onboard-guide-sub">선택 순서대로 우선순위가 정해져요. 최소 1개, 최대 6개 선택 가능</div>
+      </div>
+
+      <div class="infra-grid" id="infra-grid">
+        <!-- Cards injected by JS -->
+      </div>
+
+      <!-- Priority Preview -->
+      <div class="priority-preview" id="priority-preview">
+        <span class="priority-preview-label">우선순위:</span>
+        <span id="priority-preview-empty" style="font-size:13px; color:#94a3b8;">선택한 항목이 없어요</span>
+        <div id="priority-preview-chips" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;"></div>
+      </div>
+
+      <!-- Price Accordion -->
+      <div class="price-accordion" id="price-accordion">
+        <div class="price-accordion-header" id="price-accordion-toggle">
+          <span class="price-accordion-title">💰 가격 조건 설정 <span style="color:#94a3b8;font-size:12px;font-weight:400;">(선택사항)</span></span>
+          <span class="accordion-arrow">▼</span>
+        </div>
+        <div class="price-accordion-body">
+          <div class="price-body-inner">
+            <div class="price-row">
+              <div class="price-row-header">
+                <span class="price-row-label">🏠 전세</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-jeonse">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="price-slider-wrap" id="jeonse-slider-wrap">
+                <div class="price-range-display" id="jeonse-val">최대 <strong>5억</strong></div>
+                <input type="range" class="range-slider" id="jeonse-slider" min="0" max="20" value="10" step="1">
+              </div>
+            </div>
+            <div class="price-row">
+              <div class="price-row-header">
+                <span class="price-row-label">🏗️ 매매</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-maemae">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="price-slider-wrap" id="maemae-slider-wrap">
+                <div class="price-range-display" id="maemae-val">최대 <strong>10억</strong></div>
+                <input type="range" class="range-slider" id="maemae-slider" min="0" max="40" value="20" step="1">
+              </div>
+            </div>
+            <div class="price-notice">💡 가격 조건을 설정하면 해당 범위의 매물만 표시돼요</div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /screen-scroll -->
+
+    <div class="onboard-footer">
+      <button class="btn-primary" id="btn-onboard-next" disabled>1개 이상 선택해주세요</button>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 3: MAP ============ -->
+  <div class="screen" id="screen-map" data-screen="map">
+    <div class="map-header">
+      <div class="map-header-left">
+        <button class="btn-back" id="btn-back-map">←</button>
+        <span class="map-logo">🏠 라이프맵</span>
+        <div class="map-location-chip" id="map-location-chip">📍 강남구 개포동 근처</div>
+      </div>
+      <button class="btn-settings" id="btn-settings" title="우선순위 수정">⚙️</button>
+    </div>
+
+    <!-- Priority Badge Bar -->
+    <div class="priority-bar" id="priority-bar">
+      <!-- Injected by JS -->
+    </div>
+
+    <!-- Map Area -->
+    <div class="map-area" id="map-area">
+      <svg class="map-svg-bg" viewBox="0 0 430 500" preserveAspectRatio="xMidYMid slice">
+        <!-- Background -->
+        <rect width="430" height="500" fill="#dce8f7"/>
+        <!-- Block fills -->
+        <rect x="40" y="40" width="120" height="80" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="180" y="30" width="100" height="70" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="300" y="50" width="110" height="90" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="50" y="160" width="80" height="100" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="160" y="150" width="120" height="80" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="310" y="170" width="90" height="70" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="40" y="300" width="100" height="90" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="170" y="290" width="110" height="80" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="310" y="280" width="90" height="100" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="60" y="420" width="130" height="60" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <rect x="220" y="410" width="120" height="70" rx="4" fill="#c8d8ef" opacity="0.5"/>
+        <!-- Major roads (white lines) -->
+        <line x1="0" y1="140" x2="430" y2="140" class="map-road-main"/>
+        <line x1="0" y1="270" x2="430" y2="270" class="map-road-main"/>
+        <line x1="0" y1="390" x2="430" y2="390" class="map-road"/>
+        <line x1="145" y1="0" x2="145" y2="500" class="map-road-main"/>
+        <line x1="290" y1="0" x2="290" y2="500" class="map-road-main"/>
+        <line x1="50" y1="0" x2="50" y2="500" class="map-road"/>
+        <line x1="380" y1="0" x2="380" y2="500" class="map-road"/>
+        <!-- Diagonal roads -->
+        <line x1="0" y1="200" x2="145" y2="140" class="map-road"/>
+        <line x1="145" y1="140" x2="290" y2="180" class="map-road"/>
+        <line x1="290" y1="180" x2="430" y2="140" class="map-road"/>
+        <line x1="0" y1="330" x2="145" y2="270" class="map-road"/>
+        <line x1="290" y1="270" x2="430" y2="300" class="map-road"/>
+        <!-- Park areas (green) -->
+        <ellipse cx="215" cy="440" rx="55" ry="30" fill="#a7f3d0" opacity="0.7"/>
+        <text x="215" y="444" text-anchor="middle" font-size="11" fill="#065f46" opacity="0.8">🌳 공원</text>
+        <ellipse cx="70" cy="440" rx="25" ry="18" fill="#a7f3d0" opacity="0.6"/>
+        <!-- River -->
+        <path d="M 0 460 Q 215 450 430 465" stroke="#93c5fd" stroke-width="12" fill="none" opacity="0.5"/>
+        <!-- Labels -->
+        <text x="90" y="76" text-anchor="middle" font-size="9" fill="#94a3b8">마포구</text>
+        <text x="230" y="65" text-anchor="middle" font-size="9" fill="#94a3b8">강남구</text>
+        <text x="355" y="90" text-anchor="middle" font-size="9" fill="#94a3b8">송파구</text>
+        <text x="90" y="205" text-anchor="middle" font-size="9" fill="#94a3b8">서초구</text>
+        <text x="350" y="315" text-anchor="middle" font-size="9" fill="#94a3b8">강동구</text>
+        <text x="90" y="355" text-anchor="middle" font-size="9" fill="#94a3b8">양천구</text>
+      </svg>
+
+      <!-- Markers (absolute positioned) -->
+      <div id="markers-container"></div>
+
+      <!-- Price Filter Float -->
+      <div class="price-filter-float">
+        <button class="btn-price-filter" id="btn-map-price-filter">
+          💰 가격필터 <div class="price-dot"></div>
+        </button>
+        <div class="price-filter-dropdown" id="map-price-dropdown">
+          <div class="price-filter-row">
+            <div class="price-filter-label">전세 최대</div>
+            <div class="price-filter-val" id="map-jeonse-val">10억</div>
+            <input type="range" class="range-slider" id="map-jeonse-slider" min="1" max="20" value="20" step="1">
+          </div>
+          <div class="price-filter-row">
+            <div class="price-filter-label">매매 최대</div>
+            <div class="price-filter-val" id="map-maemae-val">20억</div>
+            <input type="range" class="range-slider" id="map-maemae-slider" min="1" max="40" value="40" step="1">
+          </div>
+          <div class="price-filter-btns">
+            <button class="btn-apply" id="btn-price-apply">적용</button>
+            <button class="btn-reset" id="btn-price-reset">초기화</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Controls -->
+      <div class="map-controls">
+        <button class="map-ctrl-btn">＋</button>
+        <button class="map-ctrl-btn">－</button>
+      </div>
+      <button class="map-location-btn">📍</button>
+    </div>
+
+    <!-- Bottom Sheet -->
+    <div class="bottom-sheet" id="bottom-sheet">
+      <div class="bottom-sheet-handle-area" id="bottom-sheet-handle">
+        <div class="bottom-sheet-handle"></div>
+      </div>
+      <div class="bottom-sheet-header">
+        <span class="bottom-sheet-title" id="bs-title">🏆 추천 단지 10곳</span>
+        <select class="sort-select" id="sort-select">
+          <option value="score">점수순 ▼</option>
+          <option value="price">가격순</option>
+          <option value="year">최신순</option>
+        </select>
+      </div>
+      <div class="cards-scroll" id="cards-scroll">
+        <!-- Cards injected by JS -->
+      </div>
+      <div class="no-results-msg" id="no-results-msg">조건에 맞는 매물이 없습니다 🔍</div>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 4: DETAIL ============ -->
+  <div class="screen" id="screen-detail" data-screen="detail">
+    <div class="detail-header">
+      <button class="btn-back" id="btn-back-detail">←</button>
+      <span class="detail-title" id="detail-apt-name">개포래미안포레스트</span>
+    </div>
+
+    <div class="screen-scroll">
+      <div class="detail-chips" id="detail-chips">
+        <!-- Injected by JS -->
+      </div>
+
+      <div class="detail-section-title">🗺️ 주변 생활 인프라</div>
+
+      <div class="infra-detail-cards" id="infra-detail-cards">
+        <!-- Injected by JS -->
+      </div>
+
+      <div class="inactive-infra-section" id="inactive-infra-section">
+        <!-- Injected by JS -->
+      </div>
+
+      <div class="detail-footer">
+        <button class="btn-primary" id="btn-back-to-map" style="background:linear-gradient(135deg,#1e3a5f,#2563eb)">← 다른 단지 보기</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const INFRA_META = {
+  subway:      { icon:'🚇', name:'지하철역',  desc:'가장 가까운 역까지 거리',         color:'#3b82f6' },
+  elementary:  { icon:'🎒', name:'초등학교',  desc:'배정 초등학교 도보 거리',         color:'#f97316' },
+  hospital:    { icon:'🏥', name:'대형병원',  desc:'종합병원·대학병원 거리',          color:'#ef4444' },
+  park:        { icon:'🌳', name:'공원·녹지', desc:'근린공원·산책로 거리',            color:'#10b981' },
+  retail:      { icon:'🛒', name:'대형마트',  desc:'마트·백화점 거리',               color:'#8b5cf6' },
+  highschool:  { icon:'🏫', name:'고등학교',  desc:'인근 고등학교 거리',             color:'#f59e0b' }
+};
+
+const INFRA_KEYS = ['subway','elementary','hospital','park','retail','highschool'];
+
+const APARTMENTS = [
+  { id:1, name:'개포래미안포레스트', gu:'강남구', dong:'개포동',
+    jeonse:62000, maemae:130000, area:84, year:2021, floor:15,
+    px:180, py:220,
+    infra:{ subway:{name:'개포동역 3호선', dist:450}, elementary:{name:'서울포이초', dist:320, assigned:true}, hospital:{name:'삼성서울병원', dist:1200}, park:{name:'구룡산공원', dist:890}, retail:{name:'코스트코 강남', dist:1100}, highschool:{name:'언남고등학교', dist:660} },
+    scores:{ subway:90, elementary:92, hospital:58, park:72, retail:65, highschool:78 }, total:87 },
+  { id:2, name:'반포자이', gu:'서초구', dong:'반포동',
+    jeonse:85000, maemae:170000, area:84, year:2008, floor:20,
+    px:140, py:160,
+    infra:{ subway:{name:'반포역 9호선', dist:280}, elementary:{name:'서울원촌초', dist:410, assigned:true}, hospital:{name:'서울성모병원', dist:650}, park:{name:'반포한강공원', dist:320}, retail:{name:'신세계백화점', dist:520}, highschool:{name:'반포고등학교', dist:380} },
+    scores:{ subway:95, elementary:85, hospital:82, park:90, retail:82, highschool:88 }, total:88 },
+  { id:3, name:'잠실엘스', gu:'송파구', dong:'잠실동',
+    jeonse:78000, maemae:155000, area:76, year:2008, floor:18,
+    px:310, py:175,
+    infra:{ subway:{name:'잠실역 2호선', dist:320}, elementary:{name:'서울잠전초', dist:280, assigned:true}, hospital:{name:'서울아산병원', dist:2100}, park:{name:'올림픽공원', dist:980}, retail:{name:'롯데월드몰', dist:450}, highschool:{name:'배명고등학교', dist:520} },
+    scores:{ subway:93, elementary:93, hospital:42, park:68, retail:88, highschool:82 }, total:85 },
+  { id:4, name:'헬리오시티', gu:'송파구', dong:'가락동',
+    jeonse:70000, maemae:140000, area:84, year:2018, floor:22,
+    px:350, py:210,
+    infra:{ subway:{name:'가락시장역 8호선', dist:380}, elementary:{name:'서울삼전초', dist:350, assigned:true}, hospital:{name:'경찰병원', dist:1800}, park:{name:'장지공원', dist:650}, retail:{name:'홈플러스 강동', dist:950}, highschool:{name:'배명고등학교', dist:780} },
+    scores:{ subway:91, elementary:89, hospital:48, park:80, retail:70, highschool:74 }, total:82 },
+  { id:5, name:'래미안대치팰리스', gu:'강남구', dong:'대치동',
+    jeonse:95000, maemae:190000, area:94, year:2015, floor:10,
+    px:200, py:195,
+    infra:{ subway:{name:'대치역 3호선', dist:520}, elementary:{name:'서울대도초', dist:390, assigned:true}, hospital:{name:'삼성서울병원', dist:1400}, park:{name:'도곡공원', dist:580}, retail:{name:'이마트 역삼', dist:820}, highschool:{name:'단국대부고', dist:290} },
+    scores:{ subway:84, elementary:87, hospital:55, park:82, retail:72, highschool:92 }, total:79 },
+  { id:6, name:'마포래미안푸르지오', gu:'마포구', dong:'아현동',
+    jeonse:52000, maemae:105000, area:59, year:2014, floor:8,
+    px:80, py:100,
+    infra:{ subway:{name:'아현역 5호선', dist:180}, elementary:{name:'서울아현초', dist:420, assigned:true}, hospital:{name:'이대서울병원', dist:780}, park:{name:'효창공원', dist:1200}, retail:{name:'이마트 마포', dist:350}, highschool:{name:'광성고등학교', dist:580} },
+    scores:{ subway:97, elementary:85, hospital:76, park:58, retail:90, highschool:80 }, total:76 },
+  { id:7, name:'은마아파트', gu:'강남구', dong:'대치동',
+    jeonse:45000, maemae:88000, area:84, year:1979, floor:5,
+    px:230, py:220,
+    infra:{ subway:{name:'대치역 3호선', dist:620}, elementary:{name:'서울대도초', dist:480, assigned:true}, hospital:{name:'삼성서울병원', dist:1600}, park:{name:'도곡공원', dist:720}, retail:{name:'이마트 역삼', dist:900}, highschool:{name:'단국대부고', dist:350} },
+    scores:{ subway:80, elementary:83, hospital:50, park:76, retail:68, highschool:90 }, total:74 },
+  { id:8, name:'올림픽파크포레온', gu:'강동구', dong:'둔촌동',
+    jeonse:65000, maemae:130000, area:76, year:2024, floor:30,
+    px:370, py:250,
+    infra:{ subway:{name:'둔촌오륜역 9호선', dist:280}, elementary:{name:'서울둔촌초', dist:520, assigned:true}, hospital:{name:'강동경희대병원', dist:1100}, park:{name:'올림픽공원', dist:750}, retail:{name:'이마트 성내', dist:680}, highschool:{name:'강동고등학교', dist:880} },
+    scores:{ subway:93, elementary:82, hospital:62, park:76, retail:78, highschool:70 }, total:72 },
+  { id:9, name:'목동신시가지7단지', gu:'양천구', dong:'목동',
+    jeonse:58000, maemae:115000, area:66, year:1987, floor:12,
+    px:70, py:320,
+    infra:{ subway:{name:'목동역 5호선', dist:480}, elementary:{name:'서울목동초', dist:280, assigned:true}, hospital:{name:'이대목동병원', dist:920}, park:{name:'목동파리공원', dist:350}, retail:{name:'홈플러스 목동', dist:520}, highschool:{name:'양천고등학교', dist:420} },
+    scores:{ subway:85, elementary:93, hospital:68, park:88, retail:82, highschool:86 }, total:70 },
+  { id:10, name:'공덕파크자이', gu:'마포구', dong:'공덕동',
+    jeonse:48000, maemae:96000, area:59, year:2016, floor:14,
+    px:75, py:130,
+    infra:{ subway:{name:'공덕역 5호선', dist:120}, elementary:{name:'서울공덕초', dist:650, assigned:true}, hospital:{name:'세브란스병원', dist:2200}, park:{name:'용산공원', dist:1800}, retail:{name:'이마트 마포', dist:480}, highschool:{name:'서울여고', dist:720} },
+    scores:{ subway:99, elementary:78, hospital:38, park:42, retail:86, highschool:75 }, total:68 }
+];
+
+// ============================================================
+// STATE
+// ============================================================
+const STATE = {
+  user: { name:'', email:'', address:'' },
+  priorities: [],          // ['subway', 'elementary', ...]
+  priceFilter: { jeonseEnabled: false, jeonse: 100000, maemaeEnabled: false, maemae: 200000 },
+  mapPriceFilter: { jeonse: 100000, maemae: 200000, active: false },
+  selectedAptId: null,
+  currentScreen: 'signup'
+};
+
+// ============================================================
+// SCREEN TRANSITIONS
+// ============================================================
+function showScreen(name) {
+  const prev = document.querySelector('.screen.active');
+  const next = document.getElementById('screen-' + name);
+  if (!next || prev === next) return;
+
+  if (prev) {
+    prev.classList.add('exit-left');
+    prev.classList.remove('active');
+  }
+  next.classList.add('active');
+  next.classList.remove('exit-left');
+
+  // Remove exit class from prev after transition
+  setTimeout(() => {
+    if (prev) prev.classList.remove('exit-left');
+  }, 380);
+
+  STATE.currentScreen = name;
+}
+
+function showScreenBack(name) {
+  const prev = document.querySelector('.screen.active');
+  const next = document.getElementById('screen-' + name);
+  if (!next || prev === next) return;
+
+  // Reverse: prev slides right out, next comes from left
+  if (prev) {
+    prev.style.transition = 'transform 0.3s ease';
+    prev.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      prev.classList.remove('active');
+      prev.style.transform = '';
+      prev.style.transition = '';
+    }, 310);
+  }
+
+  next.style.transition = 'none';
+  next.style.transform = 'translateX(-30%)';
+  next.classList.add('active');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      next.style.transition = 'transform 0.3s ease';
+      next.style.transform = 'translateX(0)';
+      setTimeout(() => {
+        next.style.transform = '';
+        next.style.transition = '';
+      }, 310);
+    });
+  });
+  STATE.currentScreen = name;
+}
+
+// ============================================================
+// SCREEN 1: SIGNUP
+// ============================================================
+const btnAddressSearch = document.getElementById('btn-address-search');
+const addressDropdown  = document.getElementById('address-dropdown');
+const inpAddress       = document.getElementById('inp-address');
+
+btnAddressSearch.addEventListener('click', (e) => {
+  e.stopPropagation();
+  addressDropdown.classList.toggle('show');
+});
+
+addressDropdown.querySelectorAll('.address-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    inpAddress.value = opt.dataset.addr;
+    STATE.user.address = opt.dataset.addr;
+    addressDropdown.classList.remove('show');
+    inpAddress.classList.remove('error');
+    document.getElementById('err-address').classList.remove('show');
+  });
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.address-input-wrap')) {
+    addressDropdown.classList.remove('show');
+  }
+});
+
+document.getElementById('btn-signup-next').addEventListener('click', () => {
+  let valid = true;
+  const name    = document.getElementById('inp-name');
+  const email   = document.getElementById('inp-email');
+  const address = document.getElementById('inp-address');
+
+  [{ el: name, err: 'err-name' }, { el: email, err: 'err-email' }, { el: address, err: 'err-address' }].forEach(f => {
+    if (!f.el.value.trim()) {
+      f.el.classList.add('error');
+      document.getElementById(f.err).classList.add('show');
+      valid = false;
+    } else {
+      f.el.classList.remove('error');
+      document.getElementById(f.err).classList.remove('show');
+    }
+  });
+
+  if (valid) {
+    STATE.user.name    = name.value.trim();
+    STATE.user.email   = email.value.trim();
+    STATE.user.address = address.value.trim();
+    showScreen('onboarding');
+    renderInfraCards();
+  }
+});
+
+// ============================================================
+// SCREEN 2: ONBOARDING — INFRA CARDS
+// ============================================================
+function renderInfraCards() {
+  const grid = document.getElementById('infra-grid');
+  grid.innerHTML = '';
+
+  INFRA_KEYS.forEach(key => {
+    const meta = INFRA_META[key];
+    const card = document.createElement('div');
+    card.className = 'infra-card';
+    card.dataset.key = key;
+    const isSelected = STATE.priorities.includes(key);
+    const rank = STATE.priorities.indexOf(key) + 1;
+
+    if (isSelected) {
+      card.classList.add('selected');
+      card.style.borderColor = meta.color;
+      card.style.background  = meta.color + '10';
+    }
+
+    card.innerHTML = `
+      <div class="infra-card-badge" style="background:${meta.color}">${isSelected ? rank : ''}</div>
+      <div class="infra-card-icon">${meta.icon}</div>
+      <div class="infra-card-name">${meta.name}</div>
+      <div class="infra-card-desc">${meta.desc}</div>
+    `;
+
+    card.addEventListener('click', () => toggleInfraCard(key));
+    grid.appendChild(card);
+  });
+
+  updatePriorityPreview();
+  updateOnboardBtn();
+}
+
+function toggleInfraCard(key) {
+  const idx = STATE.priorities.indexOf(key);
+  if (idx >= 0) {
+    STATE.priorities.splice(idx, 1);
+  } else {
+    STATE.priorities.push(key);
+  }
+  renderInfraCards();
+}
+
+function updatePriorityPreview() {
+  const empty  = document.getElementById('priority-preview-empty');
+  const chips  = document.getElementById('priority-preview-chips');
+  chips.innerHTML = '';
+
+  if (STATE.priorities.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  STATE.priorities.forEach((key, i) => {
+    const meta = INFRA_META[key];
+    if (i > 0) {
+      const arrow = document.createElement('span');
+      arrow.className = 'priority-arrow';
+      arrow.textContent = '→';
+      chips.appendChild(arrow);
+    }
+    const chip = document.createElement('span');
+    chip.className = 'priority-chip';
+    chip.style.background = meta.color;
+    chip.textContent = `${meta.icon} ${meta.name}`;
+    chips.appendChild(chip);
+  });
+}
+
+function updateOnboardBtn() {
+  const btn = document.getElementById('btn-onboard-next');
+  if (STATE.priorities.length > 0) {
+    btn.disabled = false;
+    btn.textContent = '지도에서 추천 단지 보기 →';
+  } else {
+    btn.disabled = true;
+    btn.textContent = '1개 이상 선택해주세요';
+  }
+}
+
+// Price accordion
+document.getElementById('price-accordion-toggle').addEventListener('click', () => {
+  document.getElementById('price-accordion').classList.toggle('open');
+});
+
+// Jeonse toggle
+document.getElementById('toggle-jeonse').addEventListener('change', function() {
+  const wrap = document.getElementById('jeonse-slider-wrap');
+  wrap.classList.toggle('show', this.checked);
+  STATE.priceFilter.jeonseEnabled = this.checked;
+});
+
+// Maemae toggle
+document.getElementById('toggle-maemae').addEventListener('change', function() {
+  const wrap = document.getElementById('maemae-slider-wrap');
+  wrap.classList.toggle('show', this.checked);
+  STATE.priceFilter.maemaeEnabled = this.checked;
+});
+
+// Jeonse slider
+document.getElementById('jeonse-slider').addEventListener('input', function() {
+  const val = Math.round(this.value * 0.5);
+  document.getElementById('jeonse-val').innerHTML = `최대 <strong>${val}억</strong>`;
+  STATE.priceFilter.jeonse = val * 10000;
+  updateSliderGradient(this);
+});
+
+// Maemae slider
+document.getElementById('maemae-slider').addEventListener('input', function() {
+  const val = Math.round(this.value * 0.5);
+  document.getElementById('maemae-val').innerHTML = `최대 <strong>${val}억</strong>`;
+  STATE.priceFilter.maemae = val * 10000;
+  updateSliderGradient(this);
+});
+
+function updateSliderGradient(slider) {
+  const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+  slider.style.background = `linear-gradient(to right, var(--accent) 0%, var(--accent) ${pct}%, var(--border) ${pct}%)`;
+}
+
+// Onboarding next button
+document.getElementById('btn-onboard-next').addEventListener('click', () => {
+  if (STATE.priorities.length > 0) {
+    // Apply onboarding price filters to map filters
+    if (STATE.priceFilter.jeonseEnabled) STATE.mapPriceFilter.jeonse = STATE.priceFilter.jeonse;
+    if (STATE.priceFilter.maemaeEnabled) STATE.mapPriceFilter.maemae = STATE.priceFilter.maemae;
+    STATE.mapPriceFilter.active = STATE.priceFilter.jeonseEnabled || STATE.priceFilter.maemaeEnabled;
+
+    showScreen('map');
+    renderMapScreen();
+  }
+});
+
+// Back buttons
+document.getElementById('btn-back-signup').addEventListener('click', () => showScreenBack('signup'));
+document.getElementById('btn-back-map').addEventListener('click', () => showScreenBack('onboarding'));
+document.getElementById('btn-settings').addEventListener('click', () => showScreenBack('onboarding'));
+document.getElementById('btn-back-detail').addEventListener('click', () => showScreenBack('map'));
+document.getElementById('btn-back-to-map').addEventListener('click', () => showScreenBack('map'));
+
+// ============================================================
+// SCREEN 3: MAP
+// ============================================================
+function computeScore(apt) {
+  if (STATE.priorities.length === 0) return apt.total;
+  // Weighted sum: 1st priority × 3, 2nd × 2, rest × 1
+  const weights = STATE.priorities.map((_, i) => Math.max(3 - i, 1));
+  let total = 0, wSum = 0;
+  STATE.priorities.forEach((key, i) => {
+    total += (apt.scores[key] || 0) * weights[i];
+    wSum  += weights[i];
+  });
+  // Fill rest
+  const rest = INFRA_KEYS.filter(k => !STATE.priorities.includes(k));
+  rest.forEach(k => { total += (apt.scores[k] || 0); wSum += 1; });
+  return Math.round(total / wSum);
+}
+
+function isOutOfRange(apt) {
+  const { active, jeonse, maemae } = STATE.mapPriceFilter;
+  if (!active) return false;
+  const jeonseEnabled = document.getElementById('toggle-jeonse')?.checked || false;
+  const maemaeEnabled = document.getElementById('toggle-maemae')?.checked || false;
+
+  // If both off, no filtering
+  if (!jeonseEnabled && !maemaeEnabled) return false;
+
+  // Check jeonse range
+  if (jeonseEnabled && apt.jeonse > jeonse) return true;
+  // Check maemae range
+  if (maemaeEnabled && apt.maemae > maemae) return true;
+  return false;
+}
+
+function isOutOfMapRange(apt) {
+  const jSlider = document.getElementById('map-jeonse-slider');
+  const mSlider = document.getElementById('map-maemae-slider');
+  const jMax = parseInt(jSlider.value) * 5000;
+  const mMax = parseInt(mSlider.value) * 5000;
+
+  // Only filter if slider is not at max
+  const jeonseFiltered = parseInt(jSlider.value) < parseInt(jSlider.max);
+  const maemaeFiltered = parseInt(mSlider.value) < parseInt(mSlider.max);
+
+  if (jeonseFiltered && apt.jeonse > jMax) return true;
+  if (maemaeFiltered && apt.maemae > mMax) return true;
+  return false;
+}
+
+function getSortedApartments() {
+  const sorted = [...APARTMENTS];
+  const sortVal = document.getElementById('sort-select')?.value || 'score';
+  sorted.forEach(apt => { apt._score = computeScore(apt); });
+
+  if (sortVal === 'score') {
+    sorted.sort((a, b) => b._score - a._score);
+  } else if (sortVal === 'price') {
+    sorted.sort((a, b) => a.jeonse - b.jeonse);
+  } else {
+    sorted.sort((a, b) => b.year - a.year);
+  }
+  return sorted;
+}
+
+function renderMapScreen() {
+  // Update location chip
+  const addr = STATE.user.address || '강남구 개포동';
+  const parts = addr.split(' ');
+  const shortAddr = parts.slice(-2).join(' ');
+  document.getElementById('map-location-chip').textContent = `📍 ${shortAddr} 근처`;
+
+  renderPriorityBar();
+  renderMarkers();
+  renderCards();
+}
+
+function renderPriorityBar() {
+  const bar = document.getElementById('priority-bar');
+  bar.innerHTML = '';
+  if (STATE.priorities.length === 0) {
+    bar.innerHTML = '<span style="font-size:12px;color:#94a3b8;padding:4px 8px;">모든 인프라 동등 가중치</span>';
+    return;
+  }
+  STATE.priorities.forEach((key, i) => {
+    const meta = INFRA_META[key];
+    const badge = document.createElement('div');
+    badge.className = 'priority-badge';
+    badge.style.background = meta.color;
+    badge.innerHTML = `<span class="priority-badge-num">${i+1}순위</span> ${meta.icon} ${meta.name}`;
+    bar.appendChild(badge);
+  });
+}
+
+function renderMarkers() {
+  const container = document.getElementById('markers-container');
+  container.innerHTML = '';
+  const sorted = getSortedApartments();
+
+  APARTMENTS.forEach(apt => {
+    const rank = sorted.findIndex(a => a.id === apt.id) + 1;
+    const score = computeScore(apt);
+    const outRange = isOutOfMapRange(apt);
+
+    const marker = document.createElement('div');
+    marker.className = 'marker';
+    marker.dataset.id = apt.id;
+    // Use percentage positioning based on SVG viewBox (430 × 500)
+    marker.style.left  = ((apt.px / 430) * 100) + '%';
+    marker.style.top   = ((apt.py / 500) * 100) + '%';
+
+    if (score >= 80) marker.classList.add('score-high');
+    else if (score >= 70) marker.classList.add('score-mid');
+    else marker.classList.add('score-low');
+
+    if (outRange) marker.style.opacity = '0.35';
+
+    if (rank === 1) {
+      marker.innerHTML = `<span class="marker-star">⭐</span><span>${score}</span>
+        <div class="marker-popup">${apt.name}<br>${apt.gu} · 전세 ${Math.round(apt.jeonse/10000*10)/10}억</div>`;
+    } else {
+      marker.innerHTML = `<span>${score}</span>
+        <div class="marker-popup">${apt.name}<br>${apt.gu} · 전세 ${Math.round(apt.jeonse/10000*10)/10}억</div>`;
+    }
+
+    if (apt.id === STATE.selectedAptId) marker.classList.add('active');
+
+    marker.addEventListener('click', () => selectApartment(apt.id));
+    container.appendChild(marker);
+  });
+}
+
+function renderCards() {
+  const scroll    = document.getElementById('cards-scroll');
+  const noResults = document.getElementById('no-results-msg');
+  const title     = document.getElementById('bs-title');
+  scroll.innerHTML = '';
+
+  const sorted = getSortedApartments();
+  const visible = sorted.filter(apt => !isOutOfMapRange(apt));
+  const hidden  = sorted.filter(apt => isOutOfMapRange(apt));
+  const all     = [...visible, ...hidden];
+
+  if (visible.length === 0) {
+    noResults.style.display = 'block';
+    scroll.style.display = 'none';
+    title.textContent = '조건에 맞는 단지 없음';
+    return;
+  }
+
+  noResults.style.display = 'none';
+  scroll.style.display    = 'flex';
+  title.textContent = `🏆 추천 단지 ${visible.length}곳`;
+
+  all.forEach((apt, idx) => {
+    const globalRank = sorted.findIndex(a => a.id === apt.id) + 1;
+    const score      = computeScore(apt);
+    const outRange   = isOutOfMapRange(apt);
+    const card       = document.createElement('div');
+
+    card.className = 'apt-card';
+    if (apt.id === STATE.selectedAptId) card.classList.add('active');
+    if (outRange) card.classList.add('out-of-range');
+    card.dataset.id = apt.id;
+
+    let rankBadge = '';
+    if (globalRank === 1) rankBadge = '<span class="rank-badge r1">🥇 1위</span>';
+    else if (globalRank === 2) rankBadge = '<span class="rank-badge r2">🥈 2위</span>';
+    else if (globalRank === 3) rankBadge = '<span class="rank-badge r3">🥉 3위</span>';
+    else rankBadge = `<span class="rank-badge">${globalRank}위</span>`;
+
+    // Top priority infra mini chips
+    const topKeys = STATE.priorities.length > 0 ? STATE.priorities.slice(0, 2) : ['subway', 'elementary'];
+    const infraChips = topKeys.map(k => {
+      const meta = INFRA_META[k];
+      const d    = apt.infra[k]?.dist || 0;
+      return `<span class="infra-mini-chip">${meta.icon}${d}m</span>`;
+    }).join('');
+
+    card.innerHTML = `
+      ${outRange ? '<div class="out-range-badge">가격조건 외</div>' : ''}
+      <div class="apt-card-rank">${rankBadge}</div>
+      <div class="score-bar-wrap">
+        <div class="score-bar"><div class="score-bar-fill" style="width:${score}%"></div></div>
+        <span class="score-label">${score}점</span>
+      </div>
+      <div class="apt-name">${apt.name}</div>
+      <div class="apt-location">${apt.gu} ${apt.dong}</div>
+      <div class="apt-price">전세 ${(apt.jeonse/10000).toFixed(1)}억</div>
+      <div class="apt-specs">${apt.area}㎡ · ${apt.year}년</div>
+      <div class="apt-infra-preview">${infraChips}</div>
+      <button class="btn-detail" data-id="${apt.id}">상세보기 →</button>
+    `;
+
+    card.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('btn-detail')) {
+        selectApartment(apt.id);
+      }
+    });
+
+    card.querySelector('.btn-detail').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDetail(apt.id);
+    });
+
+    scroll.appendChild(card);
+  });
+}
+
+function selectApartment(id) {
+  STATE.selectedAptId = id;
+  // Update markers
+  document.querySelectorAll('.marker').forEach(m => {
+    if (parseInt(m.dataset.id) === id) m.classList.add('active');
+    else m.classList.remove('active');
+  });
+  // Update cards
+  document.querySelectorAll('.apt-card').forEach(c => {
+    if (parseInt(c.dataset.id) === id) {
+      c.classList.add('active');
+      c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    } else {
+      c.classList.remove('active');
+    }
+  });
+}
+
+// Bottom sheet expand/collapse
+document.getElementById('bottom-sheet-handle').addEventListener('click', () => {
+  document.getElementById('bottom-sheet').classList.toggle('expanded');
+});
+
+// Sort select
+document.getElementById('sort-select').addEventListener('change', () => {
+  renderMarkers();
+  renderCards();
+});
+
+// Map price filter
+const btnMapPriceFilter = document.getElementById('btn-map-price-filter');
+const mapPriceDropdown  = document.getElementById('map-price-dropdown');
+
+btnMapPriceFilter.addEventListener('click', (e) => {
+  e.stopPropagation();
+  mapPriceDropdown.classList.toggle('show');
+  btnMapPriceFilter.classList.toggle('active');
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.price-filter-float')) {
+    mapPriceDropdown.classList.remove('show');
+  }
+});
+
+document.getElementById('map-jeonse-slider').addEventListener('input', function() {
+  const val = this.value * 5000;
+  document.getElementById('map-jeonse-val').textContent = `${(val/10000).toFixed(1)}억`;
+  updateSliderGradient(this);
+});
+
+document.getElementById('map-maemae-slider').addEventListener('input', function() {
+  const val = this.value * 5000;
+  document.getElementById('map-maemae-val').textContent = `${(val/10000).toFixed(1)}억`;
+  updateSliderGradient(this);
+});
+
+document.getElementById('btn-price-apply').addEventListener('click', () => {
+  mapPriceDropdown.classList.remove('show');
+  btnMapPriceFilter.classList.add('active');
+  renderMarkers();
+  renderCards();
+});
+
+document.getElementById('btn-price-reset').addEventListener('click', () => {
+  const jSlider = document.getElementById('map-jeonse-slider');
+  const mSlider = document.getElementById('map-maemae-slider');
+  jSlider.value = jSlider.max;
+  mSlider.value = mSlider.max;
+  document.getElementById('map-jeonse-val').textContent = '50억';
+  document.getElementById('map-maemae-val').textContent = '100억';
+  updateSliderGradient(jSlider);
+  updateSliderGradient(mSlider);
+  btnMapPriceFilter.classList.remove('active');
+  mapPriceDropdown.classList.remove('show');
+  renderMarkers();
+  renderCards();
+});
+
+// ============================================================
+// SCREEN 4: DETAIL
+// ============================================================
+function openDetail(id) {
+  const apt = APARTMENTS.find(a => a.id === id);
+  if (!apt) return;
+  STATE.selectedAptId = id;
+
+  // Header
+  document.getElementById('detail-apt-name').textContent = apt.name;
+
+  // Chips
+  const chips = document.getElementById('detail-chips');
+  chips.innerHTML = `
+    <div class="detail-chip">📍 ${apt.gu} ${apt.dong}</div>
+    <div class="detail-chip">💰 전세 ${(apt.jeonse/10000).toFixed(1)}억</div>
+    <div class="detail-chip">📐 ${apt.area}㎡ (${Math.round(apt.area/3.3)}평)</div>
+    <div class="detail-chip">🏗️ ${apt.year}년</div>
+  `;
+
+  // Active infra cards
+  const activeContainer = document.getElementById('infra-detail-cards');
+  activeContainer.innerHTML = '';
+
+  const activeKeys   = STATE.priorities.length > 0 ? STATE.priorities : INFRA_KEYS.slice(0, 3);
+  const inactiveKeys = INFRA_KEYS.filter(k => !activeKeys.includes(k));
+
+  activeKeys.forEach((key, i) => {
+    const meta    = INFRA_META[key];
+    const infraData = apt.infra[key];
+    const score   = apt.scores[key] || 0;
+    const card    = buildInfraCard(key, meta, infraData, score, i + 1, false);
+    activeContainer.appendChild(card);
+  });
+
+  // Inactive section
+  const inactiveSection = document.getElementById('inactive-infra-section');
+  inactiveSection.innerHTML = '';
+
+  if (inactiveKeys.length > 0) {
+    const title = document.createElement('div');
+    title.className = 'inactive-title';
+    title.textContent = '그 외 인프라 정보';
+    inactiveSection.appendChild(title);
+
+    const inactiveContainer = document.createElement('div');
+    inactiveContainer.className = 'inactive-infra-cards';
+    inactiveKeys.forEach(key => {
+      const meta    = INFRA_META[key];
+      const infraData = apt.infra[key];
+      const score   = apt.scores[key] || 0;
+      const card    = buildInfraCard(key, meta, infraData, score, null, true);
+      inactiveContainer.appendChild(card);
+    });
+    inactiveSection.appendChild(inactiveContainer);
+  }
+
+  showScreen('detail');
+
+  // Animate bars after transition
+  setTimeout(() => animateBars(), 400);
+}
+
+function buildInfraCard(key, meta, infraData, score, rank, inactive) {
+  const dist  = infraData?.dist || 0;
+  const name  = infraData?.name || '정보 없음';
+  const assigned = infraData?.assigned;
+
+  // Distance bar color and width
+  let barClass = 'close', barWidth = 0;
+  if (dist <= 500) { barClass = 'close'; barWidth = (dist / 2000) * 100; }
+  else if (dist <= 1000) { barClass = 'mid'; barWidth = (dist / 2000) * 100; }
+  else { barClass = 'far'; barWidth = Math.min((dist / 2000) * 100, 95); }
+
+  const walkMin = Math.round(dist / 80);
+  const distText = dist >= 1000 ? `${(dist/1000).toFixed(1)}km` : `${dist}m`;
+
+  const scoreColor = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#f97316';
+
+  const card = document.createElement('div');
+  card.className = `infra-detail-card${inactive ? ' inactive' : ''}`;
+  card.style.borderLeftColor = inactive ? '#cbd5e1' : meta.color;
+
+  const rankBadgeHTML = rank
+    ? `<span class="infra-rank-badge" style="background:${meta.color}">${rank}순위</span>`
+    : '';
+
+  const assignedBadge = assigned
+    ? `<span class="assigned-badge">✅ 배정학교</span>`
+    : '';
+
+  card.innerHTML = `
+    <div class="infra-detail-header">
+      ${rankBadgeHTML}
+      <span class="infra-detail-icon">${meta.icon}</span>
+      <span class="infra-detail-name-sec">${meta.name}</span>
+    </div>
+    <div class="infra-facility-row">
+      <span class="infra-facility-name">${name} ${assignedBadge}</span>
+    </div>
+    <div class="dist-bar-wrap">
+      <div class="dist-bar-label">
+        <span class="dist-text">📏 ${distText}</span>
+        <span class="dist-walk">도보 약 ${walkMin}분</span>
+      </div>
+      <div class="dist-bar">
+        <div class="dist-bar-fill ${barClass}" data-width="${barWidth}" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="infra-score-row">
+      <span class="infra-score-label">점수</span>
+      <div class="infra-score-bar">
+        <div class="infra-score-bar-fill" data-width="${score}" style="width:0%; background:${scoreColor}"></div>
+      </div>
+      <span class="infra-score-num">${score}점</span>
+    </div>
+  `;
+
+  return card;
+}
+
+function animateBars() {
+  document.querySelectorAll('.dist-bar-fill[data-width]').forEach(el => {
+    el.style.width = el.dataset.width + '%';
+  });
+  document.querySelectorAll('.infra-score-bar-fill[data-width]').forEach(el => {
+    el.style.width = el.dataset.width + '%';
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+// Pre-initialize slider gradients
+document.querySelectorAll('input[type="range"]').forEach(slider => {
+  const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+  slider.style.background = `linear-gradient(to right, var(--accent) 0%, var(--accent) ${pct}%, var(--border) ${pct}%)`;
+});
+</script>
+</body>
+</html>
