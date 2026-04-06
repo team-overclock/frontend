@@ -1,6 +1,7 @@
 import { RouterProvider } from "react-router";
 
 import { router } from "@/app/router";
+import { QueryProvider } from "./QueryProvider";
 
 
 
@@ -10,5 +11,9 @@ import { router } from "@/app/router";
  * - `RouterProvider`를 통해 라우터 인스턴스 연결
  */
 export function AppProvider() {
-	return <RouterProvider router={router}/>;
+	return (
+		<QueryProvider>
+			<RouterProvider router={router}/>
+		</QueryProvider>
+	);
 }
