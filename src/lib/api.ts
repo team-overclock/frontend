@@ -4,9 +4,13 @@ import {
 	type SignInInput,
 	type SignUpInput,
 	type SignInOutput,
+	type SubmitOnboardingInput,
+	type SubmitOnboardingOutput,
 	signInInputSchema,
 	signUpInputSchema,
 	signInOutputSchema,
+	submitOnboardingInputSchema,
+	submitOnboardingOutputSchema,
 	sessionResponseSchema,
 } from "@/shared/schema";
 
@@ -57,4 +61,19 @@ export async function getSession(): Promise<{ isLoggedIn: boolean }> {
 	const isLoggedIn = parsed.isLoggedIn ?? !!parsed.user;
 
 	return { isLoggedIn };
+}
+
+/**
+ * 온보딩 정보 제출 요청
+ */
+export async function submitOnboarding(input: SubmitOnboardingInput): Promise<SubmitOnboardingOutput> {
+	const payload = submitOnboardingInputSchema.parse(input);
+
+	const response = await request({
+		method: "POST",
+		url: "/onboarding",
+		data: payload,
+	});
+
+	return submitOnboardingOutputSchema.parse(response.data);
 }
