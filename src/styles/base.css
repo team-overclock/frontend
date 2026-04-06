@@ -1,0 +1,17 @@
+* {
+	@apply border-border outline-ring/50;
+} html {
+	@apply bg-background text-foreground;
+	@apply overflow-x-hidden;
+	@apply font-sans;
+} #root {
+	@apply h-svh;
+}
+
+
+
+a {
+	@apply text-primary underline hover:text-primary/80 transition-colors;
+} button {
+	@apply cursor-pointer;
+}
