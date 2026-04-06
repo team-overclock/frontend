@@ -1,0 +1,26 @@
+# frontend
+
+## 패키지 설치
+
+`package.json`에 등록된 패키지 한 번에 설치
+
+```shell
+pnpm install
+```
+
+## 실행
+
+빌드 후 실행
+
+```shell
+pnpm run build
+pnpm run preview
+```
+
+### 개발모드로 실행
+
+실행 중 코드 변경 시 즉시 반영됨
+
+```shell
+pnpm run dev
+```
