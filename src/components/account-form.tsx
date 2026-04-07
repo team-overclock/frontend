@@ -29,7 +29,7 @@ interface NormalizedFieldOptions extends form.FieldProps {
 	defaultValue: string;
 }
 
-type AccountFormFieldOptions = Partial<AccountFormFieldMap<boolean | NormalizedFieldOptions>>;
+export type AccountFormFieldOptions = Partial<AccountFormFieldMap<boolean | NormalizedFieldOptions>>;
 
 type ValidateOptions = Partial<AccountFormFieldMap<NormalizedFieldOptions>>;
 
@@ -71,11 +71,11 @@ function validateForm(
 ): AccountFormErrors {
 	const nextErrors: AccountFormErrors = {};
 
-	if (name) nextErrors.name = validate.name(values.name);
-	if (email) nextErrors.email = validate.email(values.email);
-	if (currentPassword) nextErrors.currentPassword = validate.password(values.currentPassword);
-	if (newPassword) nextErrors.newPassword = validate.password(values.newPassword);
-	if (preferredArea) nextErrors.preferredArea = validate.area(values.preferredArea);
+	if (name && name?.formNoValidate !== true) nextErrors.name = validate.name(values.name);
+	if (email && email?.formNoValidate !== true) nextErrors.email = validate.email(values.email);
+	if (currentPassword && currentPassword?.formNoValidate !== true) nextErrors.currentPassword = validate.password(values.currentPassword);
+	if (newPassword && newPassword?.formNoValidate !== true) nextErrors.newPassword = validate.password(values.newPassword);
+	if (preferredArea && preferredArea?.formNoValidate !== true) nextErrors.preferredArea = validate.area(values.preferredArea);
 
 	for (const curr in nextErrors) {
 		const key = curr as AccountFormField;

@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getSession, signIn, signUp } from "@/lib/api";
-import type { SignInInput, SignUpInput } from "@/shared/schema";
+import { getSession, signIn, signUp, updatePassword, updateProfileInfo } from "@/lib/api";
+import type {
+	SignInInput,
+	SignUpInput,
+	UpdatePasswordInput,
+	UpdateProfileInfoInput,
+} from "@/shared/schema";
 
 
 
@@ -46,5 +51,28 @@ export function useSignInMutation() {
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: authQueryKeys.session });
 		},
+	});
+}
+
+/**
+ * 사용자 정보(이름/동네) 수정 mutation 훅
+ */
+export function useUpdateProfileInfoMutation() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (input: UpdateProfileInfoInput) => updateProfileInfo(input),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: authQueryKeys.session });
+		},
+	});
+}
+
+/**
+ * 비밀번호 변경 mutation 훅
+ */
+export function useUpdatePasswordMutation() {
+	return useMutation({
+		mutationFn: (input: UpdatePasswordInput) => updatePassword(input),
 	});
 }

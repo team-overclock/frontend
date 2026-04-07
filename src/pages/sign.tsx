@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 import { NavLink, Navigate, useNavigate } from "react-router";
-import axios from "axios";
 
 import { ROUTES } from "@/shared/routes";
 import { useSessionQuery, useSignInMutation, useSignUpMutation } from "@/hooks/auth";
 import { useAuthStore } from "@/stores/auth";
+import { getRequestErrorMessage } from "@/lib/request-error";
 
 import { AccountForm, type AccountFormProps } from "@/components/account-form";
 import { Footer } from "@/components/footer";
@@ -27,53 +27,6 @@ interface HeaderProps {
 	title: string;
 	subtitle: string;
 	badges: string[];
-}
-
-function getRequestErrorMessage(error: unknown) {
-	if (!axios.isAxiosError(error)) {
-		return error instanceof Error ? error.message : "요청 처리 중 오류가 발생했어요.";
-	}
-
-	const responseData = error.response?.data;
-
-	if (typeof responseData === "string") {
-		return responseData;
-	}
-
-	if (Array.isArray(responseData)) {
-		const messages = responseData
-			.map((item) => {
-				if (!item || typeof item !== "object") {
-					return undefined;
-				}
-
-				if ("message" in item && typeof item.message === "string") {
-					if ("path" in item && Array.isArray(item.path) && item.path.length > 0) {
-						return `${item.path.join(".")}: ${item.message}`;
-					}
-
-					return item.message;
-				}
-
-				return undefined;
-			})
-			.filter((message): message is string => Boolean(message));
-
-		if (messages.length > 0) {
-			return messages.join("\n");
-		}
-	}
-
-	if (
-		responseData &&
-		typeof responseData === "object" &&
-		"message" in responseData &&
-		typeof responseData.message === "string"
-	) {
-		return responseData.message;
-	}
-
-	return "요청 처리 중 오류가 발생했어요.";
 }
 
 function Header({ icon, title, subtitle, badges }: HeaderProps) {

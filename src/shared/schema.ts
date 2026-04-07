@@ -5,6 +5,10 @@ import { z } from "zod";
 export type SignUpInput = z.infer<typeof signUpInputSchema>;
 export type SignInInput = z.infer<typeof signInInputSchema>;
 export type SignInOutput = z.infer<typeof signInOutputSchema>;
+export type UpdateProfileInfoInput = z.infer<typeof updateProfileInfoInputSchema>;
+export type UpdateProfileInfoOutput = z.infer<typeof updateProfileInfoOutputSchema>;
+export type UpdatePasswordInput = z.infer<typeof updatePasswordInputSchema>;
+export type UpdatePasswordOutput = z.infer<typeof updatePasswordOutputSchema>;
 export type SubmitOnboardingInput = z.infer<typeof submitOnboardingInputSchema>;
 export type SubmitOnboardingOutput = z.infer<typeof submitOnboardingOutputSchema>;
 
@@ -34,6 +38,34 @@ export const signInInputSchema = z.object({
 export const signInOutputSchema = signUpInputSchema.pick({
 	name: true,
 	preferredArea: true,
+});
+
+/**
+ * 사용자 정보(이름/동네) 수정 요청 데이터 스키마
+ */
+export const updateProfileInfoInputSchema = z.object({
+	name: z.string().min(1),
+	preferredArea: z.string().min(1),
+});
+
+/**
+ * 사용자 정보(이름/동네) 수정 응답 데이터 스키마
+ */
+export const updateProfileInfoOutputSchema = signInOutputSchema;
+
+/**
+ * 비밀번호 변경 요청 데이터 스키마
+ */
+export const updatePasswordInputSchema = z.object({
+	currentPassword: z.string().min(1),
+	newPassword: z.string().min(1),
+});
+
+/**
+ * 비밀번호 변경 응답 데이터 스키마
+ */
+export const updatePasswordOutputSchema = z.object({
+	isSuccess: z.boolean(),
 });
 
 /**

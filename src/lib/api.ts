@@ -4,11 +4,19 @@ import {
 	type SignInInput,
 	type SignUpInput,
 	type SignInOutput,
+	type UpdateProfileInfoInput,
+	type UpdateProfileInfoOutput,
+	type UpdatePasswordInput,
+	type UpdatePasswordOutput,
 	type SubmitOnboardingInput,
 	type SubmitOnboardingOutput,
 	signInInputSchema,
 	signUpInputSchema,
 	signInOutputSchema,
+	updateProfileInfoInputSchema,
+	updateProfileInfoOutputSchema,
+	updatePasswordInputSchema,
+	updatePasswordOutputSchema,
 	submitOnboardingInputSchema,
 	submitOnboardingOutputSchema,
 	sessionResponseSchema,
@@ -61,6 +69,36 @@ export async function getSession(): Promise<{ isLoggedIn: boolean }> {
 	const isLoggedIn = parsed.isLoggedIn ?? !!parsed.user;
 
 	return { isLoggedIn };
+}
+
+/**
+ * 사용자 정보(이름/동네) 수정 요청
+ */
+export async function updateProfileInfo(input: UpdateProfileInfoInput): Promise<UpdateProfileInfoOutput> {
+	const payload = updateProfileInfoInputSchema.parse(input);
+
+	const response = await request({
+		method: "PATCH",
+		url: "/auth/profile/info",
+		data: payload,
+	});
+
+	return updateProfileInfoOutputSchema.parse(response.data);
+}
+
+/**
+ * 비밀번호 변경 요청
+ */
+export async function updatePassword(input: UpdatePasswordInput): Promise<UpdatePasswordOutput> {
+	const payload = updatePasswordInputSchema.parse(input);
+
+	const response = await request({
+		method: "PATCH",
+		url: "/auth/profile/password",
+		data: payload,
+	});
+
+	return updatePasswordOutputSchema.parse(response.data);
 }
 
 /**
