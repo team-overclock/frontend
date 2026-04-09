@@ -59,7 +59,8 @@ export interface FloatingLabelInputProps extends Omit<React.ComponentProps<"inpu
 
 
 /**
- * 플로팅 레이블이 있는 텍스트 입력 컴포넌트
+ * 플로팅 레이블이 있는 텍스트 입력 컴포넌트.
+ * `label`이 없으면 일반 텍스트 입력으로 동작.
  */
 export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInputProps>(function FloatingLabel({
 	id,
@@ -80,6 +81,10 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
 	...props
 }, ref) {
 	const fallbackId = useId();
+
+	/**
+	 * clear 및 onClear 처리를 위한 ref
+	 */
 	const inputRef = useRef<HTMLInputElement>(null);
 	const mergedRef = useMergedRef(inputRef, ref);
 	const [uncontrolledValue, setUncontrolledValue] = useState(() => props.defaultValue?.toString() ?? "");

@@ -11,6 +11,9 @@ import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 
 
+/**
+ * 설정 섹션에 전달되는 props 타입
+ */
 interface SectionProps {
 	title: string;
 	formId: string;
@@ -23,6 +26,9 @@ interface SectionProps {
 	className?: string;
 }
 
+/**
+ * 설정 섹션 컴포넌트
+ */
 function Section({
 	title,
 	formId,

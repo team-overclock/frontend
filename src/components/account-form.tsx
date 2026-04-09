@@ -18,7 +18,14 @@ import * as form from "@/components/form";
 
 
 
+/**
+ * 기본 필드 키 타입
+ */
 type BaseFieldKey = typeof BASE_FIELD_KEYS[number];
+
+/**
+ * 기본 필드 목록
+ */
 const BASE_FIELD_KEYS = [
 	"name",
 	"email",
@@ -26,14 +33,31 @@ const BASE_FIELD_KEYS = [
 	"newPassword",
 ] as const;
 
+/**
+ * 전체 필드 키 타입
+ */
 type FieldKey = typeof FIELD_KEYS[number];
+
+/**
+ * 전체 필드 목록
+ */
 const FIELD_KEYS = [
 	...BASE_FIELD_KEYS,
 	"preferredArea",
 ] as const;
 
+/**
+ * 기본 필드 렌더링 구성 객체
+ */
 const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
+	/**
+	 * 기본 필드 렌더링 컴포넌트
+	 */
 	Component: (props: form.FieldProps) => React.JSX.Element;
+
+	/**
+	 * 기본 필드 추가 props
+	 */
 	extraProps?: Partial<form.FieldProps>;
 }> = {
 	name: {
@@ -59,44 +83,90 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 
 
 
+/**
+ * 필드 키 기반 맵 타입
+ */
 type FieldMap<T> = Record<FieldKey, T>;
+
+/**
+ * 계정 폼 입력값 타입
+ */
 type AccountFormValues = FieldMap<string>;
+
+/**
+ * 계정 폼 에러 타입
+ */
 type AccountFormErrors = Partial<AccountFormValues>;
 
+/**
+ * 필드별 옵션 입력 타입
+ */
 type AccountFormFieldOptionValue<K extends FieldKey> =
 	K extends "preferredArea"
 		? boolean | NormalizedAreaFieldOptions
 		: boolean | NormalizedFieldOptions;
 
+/**
+ * 계정 폼 필드 옵션 타입
+ */
 export type AccountFormFieldOptions = {
 	[K in FieldKey]?: AccountFormFieldOptionValue<K>;
 };
 
+/**
+ * 기본 필드 정규화 옵션 타입
+ */
 interface NormalizedFieldOptions extends form.FieldProps {
 	defaultValue?: string;
 }
 
+/**
+ * 동네 필드 정규화 옵션 타입
+ */
 interface NormalizedAreaFieldOptions extends NormalizedFieldOptions {
-	selectMode?: "inline" | "dialog";
+	/**
+	 * 동네 선택 UI 모드
+	 *
+	 * - `dialog`: 다이얼로그로 표시
+	 * - `inline`: 입력 폼 아래 div로 표시
+	 *
+	 * @default "dialog"
+	 */
+	selectMode?: "dialog" | "inline";
 }
 
+/**
+ * 전체 필드 정규화 옵션 타입
+ */
 type NormalizedAccountFormFieldOptions = {
 	[K in FieldKey]: K extends "preferredArea" ? NormalizedAreaFieldOptions : NormalizedFieldOptions;
 };
 
+/**
+ * 계정 폼 내 필드별 값 및 에러 타입
+ */
 interface AccountFormState {
 	values: AccountFormValues;
 	errors: AccountFormErrors;
 }
 
+/**
+ * 계정 폼 reducer 액션 타입
+ */
 type AccountFormAction =
 	| { type: "set-field"; field: FieldKey; value: string }
 	| { type: "set-errors"; errors: AccountFormErrors };
 
 /**
  * 필드 옵션을 정규화하는 함수
+ *
+ * @param options 외부에서 전달받은 필드 옵션
+ * @returns 정규화된 필드 옵션
  */
 function normalizeFieldOptions(options: AccountFormFieldOptions) {
+	/**
+	 * 정규화 값을 저장할 객체
+	 */
 	const normalizedOptions: Partial<NormalizedAccountFormFieldOptions> = {};
 
 	for (const field of FIELD_KEYS) {
@@ -115,6 +185,12 @@ function normalizeFieldOptions(options: AccountFormFieldOptions) {
 	return normalizedOptions;
 }
 
+/**
+ * 필드 옵션 기반 초기 입력값 생성 함수
+ *
+ * @param fields 정규화된 필드 옵션
+ * @returns 폼 초기값
+ */
 const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>): AccountFormValues => ({
 	name: fields.name?.defaultValue ?? "",
 	email: fields.email?.defaultValue ?? "",
@@ -123,6 +199,13 @@ const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>)
 	preferredArea: fields.preferredArea?.defaultValue ?? "",
 });
 
+/**
+ * 계정 폼 reducer
+ *
+ * @param state 현재 폼 상태
+ * @param action 상태 변경 액션
+ * @returns 다음 폼 상태
+ */
 function accountFormReducer(state: AccountFormState, action: AccountFormAction): AccountFormState {
 	switch (action.type) {
 		case "set-field":
@@ -155,6 +238,9 @@ function validateForm(
 	values: AccountFormValues,
 	options: Partial<NormalizedAccountFormFieldOptions>,
 ): AccountFormErrors {
+	/**
+	 * 필드별 에러 메시지 누적 객체
+	 */
 	const nextErrors: AccountFormErrors = {};
 
 	for (const field of FIELD_KEYS) {
@@ -176,6 +262,9 @@ function validateForm(
 
 
 
+/**
+ * 계정 폼 컴포넌트 props
+ */
 export interface AccountFormProps extends Omit<form.ProviderProps, "onSubmit"> {
 	fields: AccountFormFieldOptions;
 	onSubmit: (event: React.SubmitEvent<HTMLFormElement>, values: AccountFormValues) => void;
@@ -184,7 +273,7 @@ export interface AccountFormProps extends Omit<form.ProviderProps, "onSubmit"> {
 }
 
 /**
- * 모든 필드를 옵션으로 제어할 수 있는 계정 폼
+ * 모든 필드를 props로 제어할 수 있는 계정 폼
  */
 export function AccountForm({
 	noValidate = false,
@@ -200,6 +289,9 @@ export function AccountForm({
 	const preferredAreaField = fields.preferredArea;
 	const isAreaDialogMode = preferredAreaField?.selectMode !== "inline";
 
+	/**
+	 * 다이얼로그 닫힘 시 포커스 복원용 ref
+	 */
 	const openDialogButtonRef = useRef<HTMLButtonElement>(null);
 	const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
 	const [areaDraftValue, setAreaDraftValue] = useState("");

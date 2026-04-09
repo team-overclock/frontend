@@ -35,6 +35,9 @@ export interface FilterStringListOptions {
 	enableQwertyHangulMatching?: boolean;
 }
 
+/**
+ * 문자열을 검색하기 위한 형태로 변환하는 함수
+ */
 export function filterStringListOptionsToObject(value: string, {
 	caseSensitive = false,
 	enableHangulDecomposition = true,
@@ -64,6 +67,15 @@ export function filterStringList(items: string[], query: string, {
 	matchAll = true,
 	...options
 }: FilterStringListOptions = {}) {
+	/*
+	 * 한 단어에서 음절 + 초성 동시 검색 안 됨
+	 *
+	 * `강남구`를 예시로
+	 * - `남`: 검색 됨
+	 * - `ㄱㄴㄱ`로 검색 됨
+	 * - `ㄱ남ㄱ`: 검색 안 됨
+	 */
+
 	const terms = query
 		.split(/\s+/)
 		.map(x => filterStringListOptionsToObject(x, options))

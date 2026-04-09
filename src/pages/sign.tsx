@@ -13,6 +13,9 @@ import { Button } from "@/components/ui/button";
 
 
 
+/**
+ * 로그인/회원가입 페이지에서 표시할 뱃지 목록
+ */
 const badges = [
 	"🚇 역세권",
 	"🎒 초품아",
@@ -22,13 +25,34 @@ const badges = [
 
 
 
+/**
+ * 페이지 헤더 컴포넌트의 props
+ */
 interface HeaderProps {
+	/**
+	 * 헤더 상단에 표시할 이모지
+	 */
 	icon: string;
+
+	/**
+	 * 메인 타이틀
+	 */
 	title: string;
+
+	/**
+	 * 서브 타이틀
+	 */
 	subtitle: string;
+
+	/**
+	 * 헤더 하단에 표시할 뱃지 목록
+	 */
 	badges: string[];
 }
 
+/**
+ * 페이지 헤더
+ */
 function Header({ icon, title, subtitle, badges }: HeaderProps) {
 	return (
 		<header className="space-y-3 border-b p-6 pt-12 text-center">

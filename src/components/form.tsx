@@ -133,6 +133,9 @@ export interface AreaListPanelProps extends Omit<React.ComponentProps<"div">, "o
 	onSelect: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, area: string) => void;
 }
 
+/**
+ * 동네 선택 패널 컴포넌트
+ */
 export function AreaListPanel({
 	items = [],
 	onSelect,

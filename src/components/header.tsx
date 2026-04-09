@@ -7,9 +7,15 @@ import { Button } from "@/components/ui/button";
 
 
 export interface HeaderProps extends React.ComponentProps<"header"> {
+	/**
+	 * 헤더 타이틀
+	 */
 	heading?: string;
 }
 
+/**
+ * 헤더 컴포넌트
+ */
 export function Header({
 	heading,
 	className,

@@ -105,7 +105,7 @@ export const submitOnboardingOutputSchema = z.object({
 
 
 /**
- * 세션 요청에 대한 응답 데이터 스키마 정의
+ * 세션 조회 요청에 대한 응답 데이터 스키마 정의
  */
 export const sessionResponseSchema = z.looseObject({
 	isLoggedIn: z.boolean().optional(),

@@ -91,7 +91,7 @@ const PRICE_UNITS: readonly OnboardingPriceUnit[] = [
 ];
 
 /**
- * 가격 슬라이드 옵션
+ * 가격 슬라이드 옵션 기본값
  */
 const DEFAULT_PRICE_SLIDER_OPTIONS: PriceSliderOptions = {
 	min: 0,
@@ -118,6 +118,9 @@ const PRICE_ITEMS: readonly PriceItem[] = [
 	},
 ];
 
+/**
+ * 온보딩 섹션별 구성을 위한 구성 객체
+ */
 const SECTION_OPTIONS: SectionOptions[] = [
 	{
 		heading: "선호하는 동네를 선택해 주세요",
@@ -312,6 +315,9 @@ const SECTION_OPTIONS: SectionOptions[] = [
 
 
 
+/**
+ * 카드 내 표시할 인프라 데이터 타입
+ */
 interface InfraItem {
 	icon: string;
 	title: string;
@@ -319,6 +325,9 @@ interface InfraItem {
 	color: string;
 }
 
+/**
+ * 가격 조건 컨트롤용 슬라이더 옵션
+ */
 interface PriceSliderOptions {
 	min: number;
 	max: number;
@@ -326,6 +335,9 @@ interface PriceSliderOptions {
 	unit: OnboardingPriceUnit;
 }
 
+/**
+ * 가격 정보 타입
+ */
 interface PriceItem {
 	key: OnboardingPriceKey;
 	icon: string;
@@ -333,18 +345,30 @@ interface PriceItem {
 	slider: PriceSliderOptions;
 }
 
+/**
+ * slider min/max 값
+ */
 type PriceRange = [number, number];
 
+/**
+ * 온보딩 폼 상태 타입
+ */
 interface OnboardingFormState {
 	preferredArea: string;
 	infraTitles: string[];
 	priceState: OnboardingPriceState;
 }
 
+/**
+ * 편집 화면을 overview를 통해 들어갔는지 판별하기 위한 라우터 상태 타입
+ */
 interface LocationState {
 	editingFromOnboarding: true;
 }
 
+/**
+ * 섹션 렌더링에 필요한 컨텍스트 타입
+ */
 interface SectionRenderContext {
 	selectedArea: string;
 	overviewArea: string;
@@ -364,6 +388,9 @@ interface SectionRenderContext {
 	}>;
 }
 
+/**
+ * 온보딩 섹션 구성 옵션 타입
+ */
 interface SectionOptions {
 	heading: string;
 	description: string;
@@ -374,6 +401,9 @@ interface SectionOptions {
 
 
 
+/**
+ * 인프라 매핑 객체
+ */
 const INFRA_BY_TITLE = new Map(INFRA_ITEMS.map(infra => [infra.title, infra] as const));
 
 /**
@@ -392,10 +422,16 @@ const createInitialOnboardingPriceState = (): OnboardingPriceState => ({
 	},
 });
 
+/**
+ * 숫자를 지정된 구간으로 보정하는 함수
+ */
 function clampNumber(value: number, min: number, max: number): number {
 	return Math.max(min, Math.min(value, max));
 }
 
+/**
+ * 가격 상태를 깊은 복사하여 새로운 객체로 반환하는 함수
+ */
 function clonePriceState(source?: OnboardingPriceState): OnboardingPriceState {
 	const state = source ?? createInitialOnboardingPriceState();
 
@@ -411,6 +447,9 @@ function clonePriceState(source?: OnboardingPriceState): OnboardingPriceState {
 	};
 }
 
+/**
+ * 온보딩 폼 상태를 안전하게 생성하는 함수
+ */
 function createOnboardingFormState (
 	preferredArea?: string,
 	infraTitles?: string[],
@@ -423,6 +462,11 @@ function createOnboardingFormState (
 	};
 }
 
+/**
+ * 검색 파라미터에서 현재 편집 섹션 인덱스를 파싱하는 함수
+ *
+ * @returns 유효한 섹션 인덱스, 없거나 잘못된 경우 -1
+ */
 function parseSectionFromSearchParam(value: string | null): number {
 	if (value === null) return -1;
 
@@ -434,6 +478,11 @@ function parseSectionFromSearchParam(value: string | null): number {
 	return parsed - 1;
 }
 
+/**
+ * 편집 화면을 overview를 통해 들어갔는지 판별하는 타입 가드 함수
+ *
+ * @param state location.state
+ */
 function isOnboardingLocationState(state: unknown): state is LocationState {
 	return !!state
 		&& typeof state === "object"
@@ -443,12 +492,18 @@ function isOnboardingLocationState(state: unknown): state is LocationState {
 
 
 
+/**
+ * 인프라 카드 컴포넌트 props 타입
+ */
 interface CardProps extends InfraItem {
 	order?: number;
 	checked: boolean;
 	onCheckChange: (check: boolean) => void;
 }
 
+/**
+ * 인프라 선택 카드 컴포넌트
+ */
 function Card({
 	icon,
 	title,
@@ -485,6 +540,9 @@ function Card({
 
 
 
+/**
+ * 온보딩 페이지 컴포넌트
+ */
 export function OnboardingPage() {
 	const formId = "onboarding-form";
 	const { preferredArea: defaultArea } = useAuthStore();
@@ -496,7 +554,14 @@ export function OnboardingPage() {
 		reset: resetOnboarding,
 	} = useOnboardingStore();
 
+	/**
+	 * 편집 종료 후 포커스를 되돌릴 섹션 인덱스 ref
+	 */
 	const pendingFocusSectionRef = useRef<number | null>(null);
+
+	/**
+	 * overview 섹션의 수정 버튼 ref 목록
+	 */
 	const overviewEditButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
 	const navigate = useNavigate();
