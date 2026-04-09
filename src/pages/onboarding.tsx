@@ -165,7 +165,6 @@ const stepConfigs: StepConfig[] = [
 					className="mt-2"
 					items={ctx.filteredAreaList}
 					onSelect={ctx.handleAreaItemClick}
-					isOpen
 				/>
 			</div>
 		),

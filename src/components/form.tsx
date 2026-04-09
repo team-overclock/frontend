@@ -129,13 +129,11 @@ export function AreaField(props: FieldProps) {
 
 
 export interface AreaListPanelProps extends Omit<React.ComponentProps<"div">, "onSelect"> {
-	isOpen?: boolean;
 	items?: string[];
 	onSelect: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, area: string) => void;
 }
 
 export function AreaListPanel({
-	isOpen = false,
 	items = [],
 	onSelect,
 	className,
@@ -143,12 +141,10 @@ export function AreaListPanel({
 }: AreaListPanelProps) {
 	return (
 		<div
-			inert={!isOpen}
 			role="listbox"
 			aria-label="동네 목록"
 			className={cn(
 				"empty:hidden bg-secondary rounded-2xl shadow-md overflow-x-hidden transition-[max-height] h-full",
-				isOpen ? "max-h-64" : "max-h-0",
 				className,
 			)}
 			{...props}

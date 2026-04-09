@@ -5,8 +5,16 @@ import { AREAS } from "@/shared/areas";
 import { cn } from "@/lib/utils";
 import { filterStringList } from "@/lib/filter-string-list";
 
-import * as form from "@/components/form";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/errors";
+import * as form from "@/components/form";
 
 
 
@@ -30,7 +38,22 @@ interface NormalizedFieldOptions extends form.FieldProps {
 	defaultValue: string;
 }
 
-export type AccountFormFieldOptions = Partial<AccountFormFieldMap<boolean | NormalizedFieldOptions>>;
+interface NormalizedAreaFieldOptions extends NormalizedFieldOptions {
+	selectMode?: "inline" | "dialog";
+}
+
+type AccountFormFieldOptionValue<K extends AccountFormField> =
+	K extends "preferredArea"
+		? boolean | NormalizedAreaFieldOptions
+		: boolean | NormalizedFieldOptions;
+
+export type AccountFormFieldOptions = {
+	[K in AccountFormField]?: AccountFormFieldOptionValue<K>;
+};
+
+type NormalizedAccountFormFieldOptions = {
+	[K in AccountFormField]: K extends "preferredArea" ? NormalizedAreaFieldOptions : NormalizedFieldOptions;
+};
 
 type ValidateOptions = Partial<AccountFormFieldMap<NormalizedFieldOptions>>;
 
@@ -41,7 +64,7 @@ type ValidateOptions = Partial<AccountFormFieldMap<NormalizedFieldOptions>>;
  * @returns 각 필드별로 세부 옵션이 포함된 객체
  */
 function normalizeFieldOptions(options: AccountFormFieldOptions) {
-	const normalizedOptions: Partial<AccountFormFieldMap<NormalizedFieldOptions>> = {};
+	const normalizedOptions: Partial<NormalizedAccountFormFieldOptions> = {};
 
 	for (const field of FIELDS) {
 		const option = options[field];
@@ -111,9 +134,12 @@ export function AccountForm({
 	...props
 }: AccountFormProps) {
 	const fields = useMemo(() => normalizeFieldOptions(fieldOptions), [fieldOptions]);
+	const preferredAreaField = fields.preferredArea;
+	const isAreaDialogMode = preferredAreaField?.selectMode !== "inline";
 
-	const areaFieldRef = useRef<HTMLDivElement>(null);
-	const [isAreaListOpen, setIsAreaListOpen] = useState(false);
+	const openDialogButtonRef = useRef<HTMLButtonElement>(null);
+	const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
+	const [areaDraftValue, setAreaDraftValue] = useState("");
 	const [formErrors, setFormErrors] = useState<AccountFormErrors>({});
 	const [formValues, setFormValues] = useState<AccountFormValues>({
 		name: fields.name?.defaultValue ?? "",
@@ -134,16 +160,6 @@ export function AccountForm({
 		}));
 	}, []);
 
-	const closeAreaList = useCallback(() => {
-		const activeElement = document.activeElement;
-
-		if (activeElement instanceof HTMLElement) {
-			activeElement.blur();
-		}
-
-		setIsAreaListOpen(false);
-	}, []);
-
 	const filteredAreaList = useMemo(() => {
 		return filterStringList(AREAS, formValues.preferredArea);
 	}, [formValues.preferredArea]);
@@ -158,26 +174,45 @@ export function AccountForm({
 		resetField(node.name as AccountFormField);
 	}, [resetField]);
 
-	const areaInputFocus: React.FocusEventHandler<HTMLInputElement> = useCallback(() => {
-		setIsAreaListOpen(true);
-	}, []);
-
-	const areaFieldOnBlur: React.FocusEventHandler<HTMLInputElement | HTMLDivElement> = useCallback((event) => {
-		const relatedTarget = event.relatedTarget;
-		if (!areaFieldRef.current?.contains(relatedTarget)) {
-			closeAreaList();
-		}
-	}, [closeAreaList]);
-
 	const areaInputChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
 		resetField("preferredArea", event.target.value);
 	}, [resetField]);
 
 	const areaItemClick: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
 		event.currentTarget.blur();
-		closeAreaList();
 		resetField("preferredArea", area);
-	}, [closeAreaList, resetField]);
+	}, [resetField]);
+
+	const openAreaDialog = useCallback(() => {
+		if (!preferredAreaField || preferredAreaField.readOnly || preferredAreaField.disabled) return;
+		setAreaDraftValue(formValues.preferredArea);
+		setIsAreaDialogOpen(true);
+	}, [preferredAreaField, formValues.preferredArea]);
+
+	const handleDialogOpenChange = useCallback((open: boolean) => {
+		if (!open) {
+			resetField("preferredArea", areaDraftValue);
+			setAreaDraftValue("");
+		} else {
+			setAreaDraftValue(formValues.preferredArea);
+		}
+		setIsAreaDialogOpen(open);
+	}, [areaDraftValue, resetField, formValues.preferredArea]);
+
+	const handleDialogAreaChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
+		setAreaDraftValue(event.target.value);
+	}, []);
+
+	const handleDialogAreaClear = useCallback<Exclude<form.FieldProps["onClear"], undefined>>(() => {
+		setAreaDraftValue("");
+	}, []);
+
+	const handleDialogAreaSelect: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
+		event.currentTarget.blur();
+		resetField("preferredArea", area);
+		setAreaDraftValue(area);
+		setIsAreaDialogOpen(false);
+	}, [resetField]);
 
 	const handleFormSubmit: React.SubmitEventHandler<HTMLFormElement> = useCallback((event) => {
 		event.preventDefault();
@@ -193,101 +228,152 @@ export function AccountForm({
 		onSubmit(event, formValues);
 	}, [fields, formValues, noValidate, onSubmit]);
 
+	const showInlineAreaList = !!preferredAreaField && !preferredAreaField.readOnly && !preferredAreaField.disabled && !isAreaDialogMode;
+	const showAreaDialog = !!preferredAreaField && !preferredAreaField.readOnly && !preferredAreaField.disabled && isAreaDialogMode;
+
 	return (
-		<form.Provider
-			noValidate
-			className={cn("empty:hidden space-y-(--gap)", className)}
-			onSubmit={handleFormSubmit}
-			style={{
-				"--gap": typeof gap === "number" ? `${gap}px` : gap,
-			} as React.CSSProperties}
-			{...props}
-		>
-			<ErrorAlert
-				className="rounded-2xl"
-				message={errorMessage}
-			/>
-
-			{fields.name && (
-				<form.NameField
-					name="name"
-					value={formValues.name}
-					errorMessage={formErrors.name}
-					onChange={handleInputChange}
-					onClear={fields.name.readOnly || fields.name.disabled ? undefined : handleInputClear}
-					{...fields.name}
-					defaultValue={undefined}
+		<>
+			<form.Provider
+				noValidate
+				className={cn("empty:hidden space-y-(--gap)", className)}
+				onSubmit={handleFormSubmit}
+				style={{
+					"--gap": typeof gap === "number" ? `${gap}px` : gap,
+				} as React.CSSProperties}
+				{...props}
+			>
+				<ErrorAlert
+					className="rounded-2xl"
+					message={errorMessage}
 				/>
-			)}
 
-			{fields.email && (
-				<form.EmailField
-					name="email"
-					value={formValues.email}
-					errorMessage={formErrors.email}
-					onChange={handleInputChange}
-					onClear={fields.email.readOnly || fields.email.disabled ? undefined : handleInputClear}
-					{...fields.email}
-					defaultValue={undefined}
-				/>
-			)}
-
-			{fields.currentPassword && (
-				<form.PasswordField
-					name="currentPassword"
-					autoComplete="current-password"
-					value={formValues.currentPassword}
-					errorMessage={formErrors.currentPassword}
-					onChange={handleInputChange}
-					onClear={fields.currentPassword.readOnly || fields.currentPassword.disabled ? undefined : handleInputClear}
-					{...fields.currentPassword}
-					defaultValue={undefined}
-				/>
-			)}
-
-			{fields.newPassword && (
-				<form.PasswordField
-					name="newPassword"
-					type="password"
-					autoComplete="new-password"
-					value={formValues.newPassword}
-					errorMessage={formErrors.newPassword}
-					onChange={handleInputChange}
-					onClear={fields.newPassword.readOnly || fields.newPassword.disabled ? undefined : handleInputClear}
-					{...fields.newPassword}
-					defaultValue={undefined}
-				/>
-			)}
-
-			{fields.preferredArea && (
-				<div ref={areaFieldRef}>
-					<form.AreaField
-						name="preferredArea"
-						value={formValues.preferredArea}
-						errorMessage={formErrors.preferredArea}
-						onChange={areaInputChange}
-						onFocus={areaInputFocus}
-						onBlur={areaFieldOnBlur}
-						onClear={fields.preferredArea.readOnly || fields.preferredArea.disabled ? undefined : handleInputClear}
-						{...fields.preferredArea}
+				{fields.name && (
+					<form.NameField
+						name="name"
+						value={formValues.name}
+						errorMessage={formErrors.name}
+						onChange={handleInputChange}
+						onClear={fields.name.readOnly || fields.name.disabled ? undefined : handleInputClear}
+						{...fields.name}
 						defaultValue={undefined}
 					/>
-					{!fields.preferredArea.readOnly && !fields.preferredArea.disabled && (
-						<form.AreaListPanel
-							className={cn(
-								"transition-all",
-								isAreaListOpen ? "mt-2" : "mt-0",
-							)}
-							isOpen={isAreaListOpen}
-							items={filteredAreaList}
-							onSelect={areaItemClick}
-							onBlur={areaFieldOnBlur}
-						/>
-					)}
-				</div>
-			)}
+				)}
 
-			{children}
-		</form.Provider>
+				{fields.email && (
+					<form.EmailField
+						name="email"
+						value={formValues.email}
+						errorMessage={formErrors.email}
+						onChange={handleInputChange}
+						onClear={fields.email.readOnly || fields.email.disabled ? undefined : handleInputClear}
+						{...fields.email}
+						defaultValue={undefined}
+					/>
+				)}
+
+				{fields.currentPassword && (
+					<form.PasswordField
+						name="currentPassword"
+						autoComplete="current-password"
+						value={formValues.currentPassword}
+						errorMessage={formErrors.currentPassword}
+						onChange={handleInputChange}
+						onClear={fields.currentPassword.readOnly || fields.currentPassword.disabled ? undefined : handleInputClear}
+						{...fields.currentPassword}
+						defaultValue={undefined}
+					/>
+				)}
+
+				{fields.newPassword && (
+					<form.PasswordField
+						name="newPassword"
+						type="password"
+						autoComplete="new-password"
+						value={formValues.newPassword}
+						errorMessage={formErrors.newPassword}
+						onChange={handleInputChange}
+						onClear={fields.newPassword.readOnly || fields.newPassword.disabled ? undefined : handleInputClear}
+						{...fields.newPassword}
+						defaultValue={undefined}
+					/>
+				)}
+
+				{fields.preferredArea && (
+					<div>
+						<form.AreaField
+							name="preferredArea"
+							value={formValues.preferredArea}
+							errorMessage={formErrors.preferredArea}
+							onChange={areaInputChange}
+							onClear={fields.preferredArea.readOnly || fields.preferredArea.disabled ? undefined : handleInputClear}
+							{...fields.preferredArea}
+							readOnly={isAreaDialogMode || preferredAreaField.readOnly}
+							defaultValue={undefined}
+							rightIcon={isAreaDialogMode ? (
+								<Button
+									ref={openDialogButtonRef}
+									type="button"
+									onClick={openAreaDialog}
+									className="mr-3"
+									children="📍 동네 찾기"
+								/>
+							) : undefined}
+						/>
+
+						{showInlineAreaList && (
+							<form.AreaListPanel
+								className="mt-2"
+								items={filteredAreaList}
+								onSelect={areaItemClick}
+							/>
+						)}
+					</div>
+				)}
+
+				{children}
+			</form.Provider>
+
+			{showAreaDialog && (
+				<Dialog open={isAreaDialogOpen} onOpenChange={handleDialogOpenChange}>
+					<DialogContent
+						onCloseAutoFocus={event => {
+							event.preventDefault();
+							openDialogButtonRef.current?.focus();
+						}}
+						className="top-[8svh] translate-y-0 gap-0 max-h-[calc(100vh-16svh)] overflow-hidden grid-rows-[auto_minmax(0,1fr)]"
+					>
+						<form.Provider
+							onSubmit={event => {
+								event.preventDefault();
+								handleDialogOpenChange(false);
+							}}
+						>
+							<DialogHeader>
+								<DialogTitle>동네 선택</DialogTitle>
+								<DialogDescription className="space-y-4" asChild><div>
+									<p>원하는 동네를 선택해 주세요.</p>
+									<form.AreaField
+										name="preferredArea"
+										value={areaDraftValue}
+										onChange={handleDialogAreaChange}
+										onClear={handleDialogAreaClear}
+										{...preferredAreaField}
+										defaultValue={undefined}
+									/>
+								</div></DialogDescription>
+							</DialogHeader>
+
+							<div className="min-h-0 overflow-hidden">
+								<form.AreaListPanel
+									className="shadow-none rounded-none max-h-none h-full"
+									items={filteredAreaList}
+									onSelect={handleDialogAreaSelect}
+								/>
+							</div>
+						</form.Provider>
+					</DialogContent>
+				</Dialog>
+			)}
+		</>
 	);
 }
