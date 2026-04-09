@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import * as validate from "@/lib/validate";
 import { AREAS } from "@/shared/areas";
 import { cn } from "@/lib/utils";
+import { filterStringList } from "@/lib/filter-string-list";
 
 import * as form from "@/components/form";
 import { ErrorAlert } from "@/components/errors";
@@ -144,13 +145,7 @@ export function AccountForm({
 	}, []);
 
 	const filteredAreaList = useMemo(() => {
-		const terms = formValues.preferredArea.trim().split(/\s+/).filter(Boolean);
-
-		if (terms.length === 0) {
-			return AREAS;
-		}
-
-		return AREAS.filter((area) => terms.every((term) => area.includes(term)));
+		return filterStringList(AREAS, formValues.preferredArea);
 	}, [formValues.preferredArea]);
 
 	const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
