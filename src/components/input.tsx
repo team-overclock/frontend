@@ -86,6 +86,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
 
 	const inputId = id ?? name ?? fallbackId;
 	const errorId = `${inputId}-error`;
+	const labelId = `${inputId}-label`;
 	const hasLabel = !!label;
 	const editable = !readOnly && !disabled;
 	const enableClear = clearable ?? editable;
@@ -108,6 +109,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
 						autoComplete={autoComplete ?? name}
 						aria-invalid={isError !== undefined ? isError : !!errorMessage}
 						aria-describedby={errorMessage ? errorId : undefined}
+						aria-labelledby={hasLabel ? labelId : undefined}
 						onInput={event => {
 							if (!isControlled) {
 								setUncontrolledValue(event.currentTarget.value);
@@ -122,6 +124,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
 					/>
 					{hasLabel && (
 						<label
+							id={labelId}
 							htmlFor={inputId}
 							className={cn(
 								"pointer-events-none transition-all absolute top-2 left-3",
@@ -167,7 +170,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
 									inputRef.current?.focus();
 								}}
 								children={<XIcon size={16} strokeWidth={3}/>}
-								tabIndex={0}
+								tabIndex={-1}
 							/>
 						)}
 					</InputGroupAddon>

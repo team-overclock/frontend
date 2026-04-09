@@ -36,7 +36,7 @@ export function Header({
 		>
 			<div className={cn("flex items-center overflow-hidden px-1 h-16", className)}>
 				<Button
-					role="link"
+					type="button"
 					variant="ghost"
 					aria-label="뒤로 가기"
 					onClick={handleBack}
