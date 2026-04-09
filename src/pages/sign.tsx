@@ -63,6 +63,10 @@ export interface SignPageProps {
  * 인증(로그인/회원가입) 페이지 컴포넌트
  */
 export function SignPage({ mode }: SignPageProps) {
+	return <SignPageContent key={mode} mode={mode}/>;
+}
+
+function SignPageContent({ mode }: SignPageProps) {
 	const isLogin = mode === "sign-in";
 	const formId = "sign-form";
 	const sessionQuery = useSessionQuery();
@@ -153,11 +157,11 @@ export function SignPage({ mode }: SignPageProps) {
 				<p className="text-center text-sm text-muted-foreground">
 					{isLogin ? (
 						<>
-							계정이 없으신가요? <NavLink className="font-medium" to={ROUTES.SIGN_UP} replace>회원가입</NavLink>
+							계정이 없으신가요? <NavLink className="font-medium" to={ROUTES.SIGN_UP}>회원가입</NavLink>
 						</>
 					) : (
 						<>
-							이미 계정이 있으신가요? <NavLink className="font-medium" to={ROUTES.SIGN_IN} replace>로그인</NavLink>
+							이미 계정이 있으신가요? <NavLink className="font-medium" to={ROUTES.SIGN_IN}>로그인</NavLink>
 						</>
 					)}
 				</p>
