@@ -71,7 +71,11 @@ function Section({
 export function SettingsPage() {
 	const updateProfileInfoMutation = useUpdateProfileInfoMutation();
 	const updatePasswordMutation = useUpdatePasswordMutation();
-	const { name: storedName = "", preferredArea: storedPreferredArea = "" } = useAuthStore();
+	const {
+		name: storedName = "",
+		email: storedEmail = "",
+		preferredArea: storedPreferredArea = "",
+	} = useAuthStore();
 	const setProfile = useAuthStore(state => state.set);
 
 	const [isInfoSuccess, setIsInfoSuccess] = useState(false);
@@ -86,10 +90,15 @@ export function SettingsPage() {
 		name: {
 			defaultValue: storedName,
 		},
+		email: {
+			defaultValue: storedEmail,
+			formNoValidate: true,
+			disabled: true,
+		},
 		preferredArea: {
 			defaultValue: storedPreferredArea,
 		},
-	}), [storedName, storedPreferredArea]);
+	}), [storedName, storedEmail, storedPreferredArea]);
 
 	const passwordFields = useMemo<AccountFormFieldOptions>(() => ({
 		currentPassword: {
@@ -118,6 +127,7 @@ export function SettingsPage() {
 
 			setProfile({
 				name: updatedProfile.name,
+				email: updatedProfile.email,
 				preferredArea: updatedProfile.preferredArea,
 			});
 			setIsInfoSuccess(true);

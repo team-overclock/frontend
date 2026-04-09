@@ -37,6 +37,7 @@ export const signInInputSchema = z.object({
  */
 export const signInOutputSchema = signUpInputSchema.pick({
 	name: true,
+	email: true,
 	preferredArea: true,
 });
 

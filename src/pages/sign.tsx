@@ -98,6 +98,7 @@ export function SignPage({ mode }: SignPageProps) {
 
 			setProfile({
 				name: signedInUser.name,
+				email: signedInUser.email,
 				preferredArea: signedInUser.preferredArea,
 			});
 
