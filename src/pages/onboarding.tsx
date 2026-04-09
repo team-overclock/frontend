@@ -6,6 +6,7 @@ import { AREAS } from "@/shared/areas";
 import { ROUTES } from "@/shared/routes";
 import * as validate from "@/lib/validate";
 import { submitOnboarding } from "@/lib/api";
+import { filterStringList } from "@/lib/filter-string-list";
 import { getRequestErrorMessage } from "@/lib/request-error";
 import { useAuthStore } from "@/stores/auth";
 import {
@@ -575,15 +576,10 @@ export function OnboardingPage() {
 		[selectedInfraTitles],
 	);
 
-	const filteredAreaList = useMemo(() => {
-		const terms = selectedArea.trim().split(/\s+/).filter(Boolean);
-
-		if (!terms.length) {
-			return AREAS;
-		}
-
-		return AREAS.filter(area => terms.every(term => area.includes(term)));
-	}, [selectedArea]);
+	const filteredAreaList = useMemo(
+		() => filterStringList(AREAS, selectedArea),
+		[selectedArea],
+	);
 
 	const handleAreaInputChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>(event => {
 		setSelectedArea(event.target.value);

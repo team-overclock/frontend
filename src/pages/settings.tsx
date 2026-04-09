@@ -8,7 +8,6 @@ import { getRequestErrorMessage } from "@/lib/request-error";
 
 import { AccountForm, type AccountFormProps, type AccountFormFieldOptions } from "@/components/account-form";
 import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 
 
@@ -184,8 +183,6 @@ export function SettingsPage() {
 					className="py-7"
 				/>
 			</main>
-
-			<Footer className="px-6"/>
 		</div>
 	);
 }

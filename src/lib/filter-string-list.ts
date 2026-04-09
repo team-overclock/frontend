@@ -85,7 +85,7 @@ export function filterStringList(items: string[], query: string, {
 		return terms[everyOrSome]((term) => (
 			normalized.includes(term.normalized)
 			|| (term.decomposed && decomposed?.includes(term.decomposed))
-			|| (term.choseong && choseong?.includes(term.choseong))
+			|| (term.choseong && term.normalized === term.choseong && choseong?.includes(term.choseong))
 			|| (term.qwerty && qwerty?.includes(term.qwerty))
 		));
 	});

@@ -19,10 +19,9 @@ export function Header({
 	const navigate = useNavigate();
 
 	const handleBack: React.MouseEventHandler<HTMLButtonElement> = () => {
-		const referrer = document.referrer;
-		const isInternalReferrer = referrer.length > 0 && referrer.startsWith(window.location.origin);
+		const historyIndex = window.history.state?.idx;
 
-		if (isInternalReferrer) {
+		if (typeof historyIndex === "number" && historyIndex > 0) {
 			navigate(-1);
 			return;
 		}
@@ -32,7 +31,7 @@ export function Header({
 
 	return (
 		<header
-			className="bg-secondary sticky top-0 w-full"
+			className="bg-secondary sticky top-0 w-full z-10"
 			{...props}
 		>
 			<div className={cn("flex items-center overflow-hidden px-1 h-16", className)}>
