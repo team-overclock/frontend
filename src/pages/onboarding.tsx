@@ -649,6 +649,27 @@ export function OnboardingPage() {
 		setPriceState,
 	]);
 
+	const handleResetClick = useCallback(() => {
+		resetOnboarding();
+		setOverviewArea(defaultArea ?? "");
+		setSelectedArea(defaultArea ?? "");
+		setSelectedInfraTitles([]);
+		setPriceState(createInitialOnboardingPriceState());
+		setOverviewErrorMessages([]);
+		setEditorErrorMessages([]);
+		setRequestErrorMessage("");
+		closeEditor();
+	}, [
+		defaultArea,
+		closeEditor,
+		resetOnboarding,
+		setEditorErrorMessages,
+		setOverviewArea,
+		setOverviewErrorMessages,
+		setPriceState,
+		setRequestErrorMessage,
+	]);
+
 	const handleSaveClick = useCallback(() => {
 		const activeStep = stepConfigs[step];
 		const validationMessage = activeStep?.validate?.(stepContext);
@@ -791,36 +812,24 @@ export function OnboardingPage() {
 					</div>
 				</form.Provider>
 			</main>
-			<Footer className="px-6 flex justify-center-safe">
-				{
-					step < 0 ? (
-						<Button
-							type="submit"
-							form="onboarding-form"
-							variant="default"
-							size="lg"
-							className="max-w-md w-full rounded-full font-bold"
-							children="다음"
-						/>
-					) : <div className="flex gap-4 max-w-md w-full">
-						<Button
-							type="button"
-							variant="secondary"
-							size="lg"
-							className="flex-1 rounded-full font-bold"
-							children="취소"
-							onClick={handleCancelClick}
-						/>
-						<Button
-							type="button"
-							variant="default"
-							size="lg"
-							className="flex-1 rounded-full font-bold"
-							children="저장"
-							onClick={handleSaveClick}
-						/>
-					</div>
-				}
+			<Footer className="flex justify-center-safe gap-4 mx-auto max-w-md w-full">
+				<Button
+					size="lg"
+					variant="secondary"
+					type="button"
+					className="flex-1 rounded-full font-bold"
+					children={step < 0 ? "초기화" : "취소"}
+					onClick={step < 0 ? handleResetClick : handleCancelClick}
+				/>
+				<Button
+					size="lg"
+					variant="default"
+					type={step < 0 ? "submit" : "button"}
+					form={step < 0 ? "onboarding-form" : undefined}
+					className="flex-1 rounded-full font-bold"
+					children={step < 0 ? "다음" : "저장"}
+					onClick={step < 0 ? undefined : handleSaveClick}
+				/>
 			</Footer>
 		</div>
 	);
