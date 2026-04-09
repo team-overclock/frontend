@@ -118,7 +118,7 @@ const PRICE_ITEMS: readonly PriceItem[] = [
 	},
 ];
 
-const STEP_OPTIONS: StepOptions[] = [
+const SECTION_OPTIONS: SectionOptions[] = [
 	{
 		heading: "선호하는 동네를 선택해 주세요",
 		description: "가입 시 선택한 동네는 변경되지 않아요!",
@@ -345,7 +345,7 @@ interface LocationState {
 	editingFromOnboarding: true;
 }
 
-interface StepRenderContext {
+interface SectionRenderContext {
 	selectedArea: string;
 	overviewArea: string;
 	filteredAreaList: string[];
@@ -364,12 +364,12 @@ interface StepRenderContext {
 	}>;
 }
 
-interface StepOptions {
+interface SectionOptions {
 	heading: string;
 	description: string;
-	validate?: (ctx: StepRenderContext) => string | undefined;
-	renderOverview: (ctx: StepRenderContext) => React.ReactNode;
-	renderChildren: (ctx: StepRenderContext) => React.ReactNode;
+	validate?: (ctx: SectionRenderContext) => string | undefined;
+	renderOverview: (ctx: SectionRenderContext) => React.ReactNode;
+	renderChildren: (ctx: SectionRenderContext) => React.ReactNode;
 }
 
 
@@ -423,13 +423,15 @@ function createOnboardingFormState (
 	};
 }
 
-function parseStepFromSearchParam(value: string | null): number {
+function parseSectionFromSearchParam(value: string | null): number {
 	if (value === null) return -1;
 
 	const parsed = Number(value);
 	if (!Number.isInteger(parsed)) return -1;
 
-	return parsed >= 0 && parsed < STEP_OPTIONS.length ? parsed : -1;
+	if (parsed < 1 || parsed > SECTION_OPTIONS.length) return -1;
+
+	return parsed - 1;
 }
 
 function isOnboardingLocationState(state: unknown): state is LocationState {
@@ -494,7 +496,7 @@ export function OnboardingPage() {
 		reset: resetOnboarding,
 	} = useOnboardingStore();
 
-	const pendingFocusStepRef = useRef<number | null>(null);
+	const pendingFocusSectionRef = useRef<number | null>(null);
 	const overviewEditButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
 	const navigate = useNavigate();
@@ -514,19 +516,19 @@ export function OnboardingPage() {
 		storedInfraTitles,
 		storedPriceState,
 	));
-	const step = useMemo(
-		() => parseStepFromSearchParam(searchParams.get("step")),
+	const currSection = useMemo(
+		() => parseSectionFromSearchParam(searchParams.get("edit")),
 		[searchParams],
 	);
 
-	const isEditing = step >= 0;
+	const isEditing = currSection >= 0;
 	const selectedArea = isEditing ? draftState.preferredArea : committedState.preferredArea;
 	const selectedInfraTitles = isEditing ? draftState.infraTitles : committedState.infraTitles;
 	const selectedPriceState = isEditing ? draftState.priceState : committedState.priceState;
 
-	const openEditor = useCallback((nextStep: number) => {
+	const openEditor = useCallback((nextSection: number) => {
 		const nextParams = new URLSearchParams(searchParams);
-		nextParams.set("step", String(nextStep));
+		nextParams.set("edit", String(nextSection + 1));
 
 		navigate(
 			{
@@ -546,7 +548,7 @@ export function OnboardingPage() {
 		}
 
 		const nextParams = new URLSearchParams(searchParams);
-		nextParams.delete("step");
+		nextParams.delete("edit");
 
 		navigate(
 			{
@@ -558,13 +560,13 @@ export function OnboardingPage() {
 	}, [location.pathname, location.state, navigate, searchParams]);
 
 	useEffect(() => {
-		if (step >= 0 || pendingFocusStepRef.current === null) return;
+		if (currSection >= 0 || pendingFocusSectionRef.current === null) return;
 
-		const focusStep = pendingFocusStepRef.current;
-		pendingFocusStepRef.current = null;
+		const focusSection = pendingFocusSectionRef.current;
+		pendingFocusSectionRef.current = null;
 
-		requestAnimationFrame(() => overviewEditButtonRefs.current[focusStep]?.focus());
-	}, [step]);
+		requestAnimationFrame(() => overviewEditButtonRefs.current[focusSection]?.focus());
+	}, [currSection]);
 
 	const updateDraft = useCallback((updater: (prev: OnboardingFormState) => OnboardingFormState) => {
 		setDraftState(prev => updater(prev));
@@ -640,7 +642,7 @@ export function OnboardingPage() {
 		[selectedArea],
 	);
 
-	const handleCardToggle = useCallback<StepRenderContext["handleCardToggle"]>((title) => {
+	const handleCardToggle = useCallback<SectionRenderContext["handleCardToggle"]>((title) => {
 		updateDraft(prev => ({
 			...prev,
 			infraTitles: prev.infraTitles.includes(title)
@@ -663,7 +665,7 @@ export function OnboardingPage() {
 		updateDraft(prev => ({ ...prev, preferredArea: area }));
 	}, [updateDraft]);
 
-	const stepContext = useMemo<StepRenderContext>(() => ({
+	const sectionContext = useMemo<SectionRenderContext>(() => ({
 		selectedArea,
 		overviewArea: committedState.preferredArea,
 		filteredAreaList,
@@ -701,9 +703,9 @@ export function OnboardingPage() {
 	}, [committedState, openEditor]);
 
 	const handleCancelClick = useCallback(() => {
-		if (step < 0) return;
+		if (currSection < 0) return;
 
-		pendingFocusStepRef.current = step;
+		pendingFocusSectionRef.current = currSection;
 		setDraftState(createOnboardingFormState(
 			committedState.preferredArea,
 			committedState.infraTitles,
@@ -711,11 +713,11 @@ export function OnboardingPage() {
 		));
 		setEditorErrorMessages(prev => {
 			const next = [...prev];
-			next[step] = "";
+			next[currSection] = "";
 			return next;
 		});
 		closeEditor();
-	}, [closeEditor, committedState, step]);
+	}, [closeEditor, committedState, currSection]);
 
 	const handleResetClick = useCallback(() => {
 		const initialState = createOnboardingFormState(
@@ -738,13 +740,13 @@ export function OnboardingPage() {
 	}, [closeEditor, defaultArea, resetOnboarding]);
 
 	const handleSaveClick = useCallback(() => {
-		if (step < 0) return;
+		if (currSection < 0) return;
 
-		const validationMessage = STEP_OPTIONS[step]?.validate?.(stepContext);
+		const validationMessage = SECTION_OPTIONS[currSection]?.validate?.(sectionContext);
 		if (validationMessage) {
 			setEditorErrorMessages(prev => {
 				const next = [...prev];
-				next[step] = validationMessage;
+				next[currSection] = validationMessage;
 				return next;
 			});
 			return;
@@ -765,24 +767,24 @@ export function OnboardingPage() {
 
 		setOverviewErrorMessages(prev => {
 			const next = [...prev];
-			next[step] = "";
+			next[currSection] = "";
 			return next;
 		});
 		setEditorErrorMessages(prev => {
 			const next = [...prev];
-			next[step] = "";
+			next[currSection] = "";
 			return next;
 		});
 
-		pendingFocusStepRef.current = step;
+		pendingFocusSectionRef.current = currSection;
 		closeEditor();
-	}, [closeEditor, draftState, setOnboarding, step, stepContext]);
+	}, [closeEditor, draftState, setOnboarding, currSection, sectionContext]);
 
 	const handleFormSubmit = useCallback<React.SubmitEventHandler<HTMLFormElement>>(async (event) => {
 		event.preventDefault();
 		setRequestErrorMessage("");
 
-		const errors = STEP_OPTIONS.map(x => x.validate?.(stepContext) ?? "");
+		const errors = SECTION_OPTIONS.map(x => x.validate?.(sectionContext) ?? "");
 		const hasAnyError = errors.some(Boolean);
 
 		if (hasAnyError) {
@@ -814,7 +816,7 @@ export function OnboardingPage() {
 		} catch (error) {
 			setRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [committedState, navigate, resetOnboarding, stepContext]);
+	}, [committedState, navigate, resetOnboarding, sectionContext]);
 
 	return (
 		<div className="h-full flex flex-col">
@@ -830,10 +832,10 @@ export function OnboardingPage() {
 				>
 					<div className="relative">
 						<section
-							inert={step < 0 ? undefined : true}
+							inert={currSection < 0 ? undefined : true}
 							className={cn(
 								"space-y-4 transition-all",
-								step < 0
+								currSection < 0
 									? "static translate-x-0 opacity-100"
 									: "absolute inset-0 -translate-x-12 opacity-0 pointer-events-none",
 							)}
@@ -845,7 +847,7 @@ export function OnboardingPage() {
 
 							<ErrorAlert message={requestErrorMessage}/>
 
-							{STEP_OPTIONS.map((opts, idx) => (
+							{SECTION_OPTIONS.map((opts, idx) => (
 								<article
 									key={opts.heading}
 									className="relative group"
@@ -861,14 +863,14 @@ export function OnboardingPage() {
 										onClick={() => handleEditClick(idx)}
 										children="수정"
 									/>
-									{opts.renderOverview(stepContext)}
+									{opts.renderOverview(sectionContext)}
 									<ErrorLine message={overviewErrorMessages[idx]}/>
 								</article>
 							))}
 						</section>
 
-						{STEP_OPTIONS.map((opts, idx) => {
-							const currentIsEditing = step === idx;
+						{SECTION_OPTIONS.map((opts, idx) => {
+							const currentIsEditing = currSection === idx;
 
 							return (
 								<section
@@ -886,7 +888,7 @@ export function OnboardingPage() {
 										<p className="text-sm text-muted-foreground">{opts.description}</p>
 									</header>
 									<ErrorAlert message={editorErrorMessages[idx] || overviewErrorMessages[idx]}/>
-									{opts.renderChildren(stepContext)}
+									{opts.renderChildren(sectionContext)}
 								</section>
 							);
 						})}
@@ -899,17 +901,17 @@ export function OnboardingPage() {
 						variant="secondary"
 						type="button"
 						className="flex-1 rounded-full font-bold"
-						onClick={step < 0 ? handleResetClick : handleCancelClick}
-						children={step < 0 ? "초기화" : "취소"}
+						onClick={currSection < 0 ? handleResetClick : handleCancelClick}
+						children={currSection < 0 ? "초기화" : "취소"}
 					/>
 					<Button
 						size="lg"
 						variant="default"
-						type={step < 0 ? "submit" : "button"}
-						form={step < 0 ? formId : undefined}
+						type={currSection < 0 ? "submit" : "button"}
+						form={currSection < 0 ? formId : undefined}
 						className="flex-1 rounded-full font-bold"
-						onClick={step < 0 ? undefined : handleSaveClick}
-						children={step < 0 ? "다음" : "저장"}
+						onClick={currSection < 0 ? undefined : handleSaveClick}
+						children={currSection < 0 ? "다음" : "저장"}
 					/>
 				</Footer>
 			</main>
