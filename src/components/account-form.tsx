@@ -1,7 +1,7 @@
 import { useRef, useCallback, useMemo, useReducer, useState } from "react";
 
 import * as validate from "@/lib/validate";
-import { AREAS } from "@/shared/areas";
+import { AREAS } from "@/shared/enum";
 import { cn } from "@/lib/utils";
 import { filterStringList } from "@/lib/filter-string-list";
 

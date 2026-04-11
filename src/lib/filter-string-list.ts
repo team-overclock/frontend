@@ -63,7 +63,7 @@ export function filterStringListOptionsToObject(value: string, {
 /**
  * 문자열 검색 함수
  */
-export function filterStringList(items: string[], query: string, {
+export function filterStringList(items: readonly string[], query: string, {
 	matchAll = true,
 	...options
 }: FilterStringListOptions = {}) {

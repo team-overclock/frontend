@@ -1,4 +1,4 @@
-import { AREAS } from "@/shared/areas";
+import { AREAS } from "@/shared/enum";
 
 
 

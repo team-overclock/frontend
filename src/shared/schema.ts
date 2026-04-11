@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AREAS, INFRA_TITLES, PRICE_KEYS, PRICE_UNITS } from "@/shared/enum";
 
 
 
@@ -22,7 +23,7 @@ export const signUpInputSchema = z.object({
 	name: z.string().min(1),
 	email: z.email(),
 	password: z.string().min(8),
-	preferredArea: z.string().min(1),
+	preferredArea: z.enum(AREAS),
 });
 
 /**
@@ -78,20 +79,16 @@ export const updatePasswordOutputSchema = z.object({
  * 온보딩 제출 요청 데이터 스키마
  */
 export const submitOnboardingInputSchema = z.object({
-	preferredArea: z.string().min(1),
-	infraTitles: z.array(z.string()),
-	priceState: z.object({
-		purchase: z.object({
+	preferredArea: z.enum(AREAS),
+	infraTitles: z.array(z.enum(INFRA_TITLES)),
+	priceState: z.record(
+		z.enum(PRICE_KEYS),
+		z.object({
 			enabled: z.boolean(),
 			range: z.tuple([z.number(), z.number()]),
-			unit: z.string(),
+			unit: z.enum(PRICE_UNITS),
 		}),
-		jeonse: z.object({
-			enabled: z.boolean(),
-			range: z.tuple([z.number(), z.number()]),
-			unit: z.string(),
-		}),
-	}),
+	),
 });
 
 /**

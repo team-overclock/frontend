@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import type { InfraTitle, PriceKey, PriceUnit } from "@/shared/enum";
 
 
 
-export type OnboardingPriceKey = "purchase" | "jeonse";
-export type OnboardingPriceUnit = string; // e.g. "억 원", "만 원"
+export type OnboardingPriceKey = PriceKey;
 export type OnboardingPriceRange = [min: number, max: number];
 export interface OnboardingPriceSelection {
 	/**
@@ -20,20 +20,20 @@ export interface OnboardingPriceSelection {
 	/**
 	 * 가격 단위
 	 */
-	unit: OnboardingPriceUnit;
+	unit: PriceUnit;
 }
 
 /**
  * 가격 유형별 범위 상태
  */
-export type OnboardingPriceState = Record<OnboardingPriceKey, OnboardingPriceSelection>;
+export type OnboardingPriceState = Record<PriceKey, OnboardingPriceSelection>;
 
 /**
  * 사용자 선호 데이터
  */
 interface OnboardingPayload {
 	preferredArea?: string;
-	infraTitles?: string[];
+	infraTitles?: InfraTitle[];
 	priceState?: OnboardingPriceState;
 }
 

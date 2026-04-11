@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import { User2Icon, AtSignIcon, KeyRoundIcon, MapPinHouseIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { AREAS } from "@/shared/areas";
+import { AREAS } from "@/shared/enum";
 
 import { Item, ItemContent } from "@/components/ui/item";
 import { FloatingLabelInput, type FloatingLabelInputProps } from "@/components/input";

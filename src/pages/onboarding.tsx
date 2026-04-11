@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { cn } from "@/lib/utils";
-import { AREAS } from "@/shared/areas";
+import { AREAS, INFRA_ITEMS, PRICE_UNITS } from "@/shared/enum";
+import type { InfraItem, InfraTitle, PriceUnit } from "@/shared/enum";
 import { ROUTES } from "@/shared/routes";
 import * as validate from "@/lib/validate";
 import { submitOnboarding } from "@/lib/api";
@@ -14,7 +15,6 @@ import {
 	type OnboardingPriceKey,
 	type OnboardingPriceSelection,
 	type OnboardingPriceState,
-	type OnboardingPriceUnit,
 } from "@/stores/onboarding";
 
 import {
@@ -37,58 +37,6 @@ import { Header } from "@/components/header";
 import * as form from "@/components/form";
 
 
-
-/**
- * 인프라 정보
- */
-const INFRA_ITEMS: readonly InfraItem[] = [
-	{
-		icon: "🚇",
-		title: "지하철역",
-		description: "가장 가까운 역까지 거리",
-		color: "blue",
-	},
-	{
-		icon: "🎒",
-		title: "초등학교",
-		description: "배정 초등학교 도보 거리",
-		color: "orange",
-	},
-	{
-		icon: "🏥",
-		title: "대형병원",
-		description: "종합병원·대학병원 거리",
-		color: "red",
-	},
-	{
-		icon: "🌳",
-		title: "공원·녹지",
-		description: "근린공원·산책로 거리",
-		color: "green",
-	},
-	{
-		icon: "🛒",
-		title: "대형마트",
-		description: "마트·백화점 거리",
-		color: "purple",
-	},
-	{
-		icon: "🏫",
-		title: "고등학교",
-		description: "인근 고등학교 거리",
-		color: "gold",
-	},
-];
-
-
-
-/**
- * 가격 단위
- */
-const PRICE_UNITS: readonly OnboardingPriceUnit[] = [
-	"억 원",
-	"만 원",
-];
 
 /**
  * 가격 슬라이드 옵션 기본값
@@ -271,7 +219,7 @@ const SECTION_OPTIONS: SectionOptions[] = [
 								</div>
 								<div className="flex items-center-safe gap-1">
 									<Label asChild className="text-xs text-muted-foreground"><span>단위</span></Label>
-									<Select value={item.unit} onValueChange={value => item.setUnit(value as OnboardingPriceUnit)}>
+									<Select value={item.unit} onValueChange={value => item.setUnit(value as PriceUnit)}>
 										<SelectTrigger
 											disabled={!item.enabled}
 											aria-disabled={!item.enabled}
@@ -316,23 +264,12 @@ const SECTION_OPTIONS: SectionOptions[] = [
 
 
 /**
- * 카드 내 표시할 인프라 데이터 타입
- */
-interface InfraItem {
-	icon: string;
-	title: string;
-	description: string;
-	color: string;
-}
-
-/**
  * 가격 조건 컨트롤용 슬라이더 옵션
  */
-interface PriceSliderOptions {
+interface PriceSliderOptions extends Pick<OnboardingPriceSelection, "unit"> {
 	min: number;
 	max: number;
 	step: number;
-	unit: OnboardingPriceUnit;
 }
 
 /**
@@ -355,7 +292,7 @@ type PriceRange = [number, number];
  */
 interface OnboardingFormState {
 	preferredArea: string;
-	infraTitles: string[];
+	infraTitles: InfraTitle[];
 	priceState: OnboardingPriceState;
 }
 
@@ -376,15 +313,15 @@ interface SectionRenderContext {
 	handleAreaInputChange: React.ChangeEventHandler<HTMLInputElement>;
 	handleAreaInputClear: Exclude<form.FieldProps["onClear"], undefined>;
 	handleAreaItemClick: form.AreaListPanelProps["onSelect"];
-	selectedInfraTitles: string[];
+	selectedInfraTitles: InfraTitle[];
 	selectedItems: InfraItem[];
-	selectedTitleSet: Set<string>;
-	selectedOrderMap: Map<string, number>;
-	handleCardToggle: (title: string, checked: boolean) => void;
+	selectedTitleSet: Set<InfraTitle>;
+	selectedOrderMap: Map<InfraTitle, number>;
+	handleCardToggle: (title: InfraTitle, checked: boolean) => void;
 	priceItems: Array<PriceItem & OnboardingPriceSelection & {
 		setEnabled: (checked: boolean) => void;
 		setRange: (range: PriceRange) => void;
-		setUnit: (unit: OnboardingPriceUnit) => void;
+		setUnit: (unit: PriceUnit) => void;
 	}>;
 }
 
@@ -452,7 +389,7 @@ function clonePriceState(source?: OnboardingPriceState): OnboardingPriceState {
  */
 function createOnboardingFormState (
 	preferredArea?: string,
-	infraTitles?: string[],
+	infraTitles?: InfraTitle[],
 	priceState?: OnboardingPriceState,
 ): OnboardingFormState {
 	return {
@@ -663,7 +600,7 @@ export function OnboardingPage() {
 		}));
 	}, [updateDraft]);
 
-	const setDraftPriceUnit = useCallback((key: OnboardingPriceKey, unit: OnboardingPriceUnit) => {
+	const setDraftPriceUnit = useCallback((key: OnboardingPriceKey, unit: PriceUnit) => {
 		updateDraft(prev => ({
 			...prev,
 			priceState: {
@@ -687,7 +624,7 @@ export function OnboardingPage() {
 				unit: current.unit,
 				setEnabled: (checked: boolean) => setDraftPriceEnabled(item.key, checked),
 				setRange: (range: PriceRange) => setDraftPriceRange(item.key, range),
-				setUnit: (unit: OnboardingPriceUnit) => setDraftPriceUnit(item.key, unit),
+				setUnit: (unit: PriceUnit) => setDraftPriceUnit(item.key, unit),
 			};
 		});
 	}, [selectedPriceState, setDraftPriceEnabled, setDraftPriceRange, setDraftPriceUnit]);
