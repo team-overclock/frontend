@@ -64,17 +64,17 @@ export interface SignPageProps {
  */
 export function SignPage({ mode }: SignPageProps) {
 	const isLogin = mode === "sign-in";
+	const formId = "sign-form";
 	const sessionQuery = useSessionQuery();
 	const signInMutation = useSignInMutation();
 	const signUpMutation = useSignUpMutation();
 	const setProfile = useAuthStore(state => state.set);
 	const navigate = useNavigate();
 
-	const [signInRequestErrorMessage, setSignInRequestErrorMessage] = useState("");
-	const [signUpRequestErrorMessage, setSignUpRequestErrorMessage] = useState("");
-	const setRequestErrorMessage = isLogin ? setSignInRequestErrorMessage : setSignUpRequestErrorMessage;
-	const requestErrorMessage = isLogin ? signInRequestErrorMessage : signUpRequestErrorMessage;
-	const isSubmitting = signInMutation.isPending || signUpMutation.isPending;
+	const [requestErrorMessage, setRequestErrorMessage] = useState("");
+	const isSubmitting = isLogin
+		? signInMutation.isPending
+		: (signInMutation.isPending || signUpMutation.isPending);
 
 	const handleSubmit = useCallback<AccountFormProps["onSubmit"]>(async (_, formValues) => {
 		setRequestErrorMessage("");
@@ -125,7 +125,7 @@ export function SignPage({ mode }: SignPageProps) {
 				/>
 
 				<AccountForm
-					id="sign-form"
+					id={formId}
 					gap={18}
 					noValidate={isLogin}
 					onSubmit={handleSubmit}
@@ -143,7 +143,7 @@ export function SignPage({ mode }: SignPageProps) {
 			<Footer className="flex flex-col items-center space-y-4">
 				<Button
 					type="submit"
-					form="sign-form"
+					form={formId}
 					variant="default"
 					size="lg"
 					className="max-w-md w-full rounded-full font-bold shadow-md"

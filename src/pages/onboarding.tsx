@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { cn } from "@/lib/utils";
@@ -11,17 +11,12 @@ import { getRequestErrorMessage } from "@/lib/request-error";
 import { useAuthStore } from "@/stores/auth";
 import {
 	useOnboardingStore,
+	type OnboardingPriceKey,
 	type OnboardingPriceSelection,
 	type OnboardingPriceState,
-	type OnboardingPriceKey,
 	type OnboardingPriceUnit,
 } from "@/stores/onboarding";
 
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 import {
 	Select,
 	SelectContent,
@@ -31,9 +26,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { ErrorAlert, ErrorLine } from "@/components/errors";
-import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { Header } from "@/components/header";
 import * as form from "@/components/form";
 
 
@@ -41,7 +41,7 @@ import * as form from "@/components/form";
 /**
  * 인프라 정보
  */
-const infraItems: InfraItem[] = [
+const INFRA_ITEMS: readonly InfraItem[] = [
 	{
 		icon: "🚇",
 		title: "지하철역",
@@ -85,7 +85,7 @@ const infraItems: InfraItem[] = [
 /**
  * 가격 단위
  */
-const PRICE_UNITS = [
+const PRICE_UNITS: readonly OnboardingPriceUnit[] = [
 	"억 원",
 	"만 원",
 ];
@@ -93,52 +93,32 @@ const PRICE_UNITS = [
 /**
  * 가격 슬라이드 옵션
  */
-const DEFAULT_PRICE_SLIDER_CONFIG: PriceSliderConfig = {
+const DEFAULT_PRICE_SLIDER_OPTIONS: PriceSliderOptions = {
 	min: 0,
 	max: 9999,
 	step: 1,
+	unit: "억 원",
 };
 
 /**
- * 매매 가격 정보
+ * 가격 정보
  */
-const purchaseItem: PriceItem = {
-	key: "purchase",
-	icon: "🏠",
-	label: "매매",
-	slider: DEFAULT_PRICE_SLIDER_CONFIG,
-};
-
-/**
- * 전세 가격 정보
- */
-const jeonseItem: PriceItem = {
-	key: "jeonse",
-	icon: "💸",
-	label: "전세",
-	slider: DEFAULT_PRICE_SLIDER_CONFIG,
-};
-
-/**
- * @returns 가격 정보 기본값
- */
-const createInitialOnboardingPriceState = (): OnboardingPriceState => ({
-	purchase: {
-		enabled: false,
-		range: [DEFAULT_PRICE_SLIDER_CONFIG.min, DEFAULT_PRICE_SLIDER_CONFIG.max],
-		unit: "억 원",
+const PRICE_ITEMS: readonly PriceItem[] = [
+	{
+		key: "purchase",
+		icon: "🏠",
+		label: "매매",
+		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
 	},
-	jeonse: {
-		enabled: false,
-		range: [DEFAULT_PRICE_SLIDER_CONFIG.min, DEFAULT_PRICE_SLIDER_CONFIG.max],
-		unit: "억 원",
+	{
+		key: "jeonse",
+		icon: "💸",
+		label: "전세",
+		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
 	},
-});
+];
 
-/**
- * 각 스탭별 overview와 editor 구성 데이터
- */
-const stepConfigs: StepConfig[] = [
+const STEP_OPTIONS: StepOptions[] = [
 	{
 		heading: "선호하는 동네를 선택해 주세요",
 		description: "가입 시 선택한 동네는 변경되지 않아요!",
@@ -172,7 +152,7 @@ const stepConfigs: StepConfig[] = [
 	{
 		heading: "🏗️ 생활 인프라 (1개 이상)",
 		description: "선택한 순서대로 우선순위가 정해져요!",
-		validate: ctx => (ctx.selectedInfraTitles.length > 0 ? undefined : "인프라를 1개 이상 선택해 주세요!"),
+		validate: ctx => (ctx.selectedInfraTitles.length ? undefined : "인프라를 1개 이상 선택해 주세요!"),
 		renderOverview: ctx => (
 			<div className="rounded-2xl border bg-secondary p-4 shadow-md space-y-3 transition-colors group-data-[invalid=true]:border-destructive">
 				<h3 className="text-sm font-bold">인프라 우선순위</h3>
@@ -185,7 +165,10 @@ const stepConfigs: StepConfig[] = [
 								"--c": color,
 							} as React.CSSProperties}
 						>
-							<span className="inline-flex justify-center items-center size-6 rounded-full bg-(--c) mr-1 text-white">{idx + 1}</span>
+							<span
+								className="inline-flex justify-center items-center size-6 rounded-full bg-(--c) mr-1 text-white"
+								children={idx + 1}
+							/>
 							<span>{icon} {title}</span>
 						</li>
 					))}
@@ -200,13 +183,13 @@ const stepConfigs: StepConfig[] = [
 		),
 		renderChildren: ctx => (
 			<div className="grid grid-cols-2 gap-4">
-				{infraItems.map(infra => (
+				{INFRA_ITEMS.map(infra => (
 					<Card
+						{...infra}
 						key={infra.title}
 						order={ctx.selectedOrderMap.get(infra.title)}
 						checked={ctx.selectedTitleSet.has(infra.title)}
-						onChange={() => ctx.handleCardToggle(infra.title)}
-						{...infra}
+						onCheckChange={checked => ctx.handleCardToggle(infra.title, checked)}
 					/>
 				))}
 			</div>
@@ -232,15 +215,8 @@ const stepConfigs: StepConfig[] = [
 				{ctx.priceItems.map(item => (
 					<div key={item.key} className="not-last:border-b">
 						<div className="flex justify-between items-center-safe">
-							<Label
-								htmlFor={item.key}
-								children={`${item.icon} ${item.label}`}
-							/>
-							<Switch
-								id={item.key}
-								onCheckedChange={item.setEnabled}
-								checked={item.enabled}
-							/>
+							<Label htmlFor={item.key}>{item.icon} {item.label}</Label>
+							<Switch id={item.key} checked={item.enabled} onCheckedChange={item.setEnabled}/>
 						</div>
 						<div>
 							<div className="flex justify-between items-center-safe pt-2 pb-1.5 gap-3">
@@ -257,16 +233,15 @@ const stepConfigs: StepConfig[] = [
 										value={item.range[0]}
 										disabled={!item.enabled}
 										aria-disabled={!item.enabled}
+										aria-label={`${item.label} 최소 금액`}
 										onChange={event => {
-											const parsedValue = Number(event.target.value);
-											if (Number.isNaN(parsedValue)) return;
+											const parsed = Number(event.target.value);
+											if (Number.isNaN(parsed)) return;
 
-											const nextMin = Math.max(item.slider.min, Math.min(parsedValue, item.slider.max));
+											const nextMin = clampNumber(parsed, item.slider.min, item.slider.max);
 											const nextMax = Math.max(nextMin, item.range[1]);
-
 											item.setRange([nextMin, nextMax]);
 										}}
-										aria-label={`${item.label} 최소 금액`}
 									/>
 									<Label htmlFor={`${item.key}-max`} className="text-xs text-muted-foreground">최대</Label>
 									<Input
@@ -280,24 +255,20 @@ const stepConfigs: StepConfig[] = [
 										value={item.range[1]}
 										disabled={!item.enabled}
 										aria-disabled={!item.enabled}
+										aria-label={`${item.label} 최대 금액`}
 										onChange={event => {
-											const parsedValue = Number(event.target.value);
-											if (Number.isNaN(parsedValue)) return;
+											const parsed = Number(event.target.value);
+											if (Number.isNaN(parsed)) return;
 
-											const nextMax = Math.max(item.slider.min, Math.min(parsedValue, item.slider.max));
+											const nextMax = clampNumber(parsed, item.slider.min, item.slider.max);
 											const nextMin = Math.min(item.range[0], nextMax);
-
 											item.setRange([nextMin, nextMax]);
 										}}
-										aria-label={`${item.label} 최대 금액`}
 									/>
 								</div>
 								<div className="flex items-center-safe gap-1">
 									<Label asChild className="text-xs text-muted-foreground"><span>단위</span></Label>
-									<Select
-										value={item.unit}
-										onValueChange={value => item.setUnit(value as OnboardingPriceUnit)}
-									>
+									<Select value={item.unit} onValueChange={value => item.setUnit(value as OnboardingPriceUnit)}>
 										<SelectTrigger
 											disabled={!item.enabled}
 											aria-disabled={!item.enabled}
@@ -322,13 +293,13 @@ const stepConfigs: StepConfig[] = [
 								min={item.slider.min}
 								max={item.slider.max}
 								step={item.slider.step}
-								aria-label={`${item.label} 가격 범위`}
 								value={item.range}
 								disabled={!item.enabled}
 								aria-disabled={!item.enabled}
+								aria-label={`${item.label} 가격 범위`}
 								onValueChange={value => {
 									if (value.length !== 2) return;
-									item.setRange(value as [number, number]);
+									item.setRange(value as PriceRange);
 								}}
 							/>
 						</div>
@@ -348,35 +319,117 @@ interface InfraItem {
 	color: string;
 }
 
-interface PriceSliderConfig {
+interface PriceSliderOptions {
 	min: number;
 	max: number;
 	step: number;
+	unit: OnboardingPriceUnit;
 }
 
 interface PriceItem {
 	key: OnboardingPriceKey;
 	icon: string;
 	label: string;
-	slider: PriceSliderConfig;
+	slider: PriceSliderOptions;
 }
 
 type PriceRange = [number, number];
 
-const infraByTitle = new Map(infraItems.map(infra => [infra.title, infra] as const));
-const priceItems = [purchaseItem, jeonseItem] as const;
+interface OnboardingFormState {
+	preferredArea: string;
+	infraTitles: string[];
+	priceState: OnboardingPriceState;
+}
 
-const parseStepFromSearchParam = (value: string | null) => {
+interface LocationState {
+	editingFromOnboarding: true;
+}
+
+interface StepRenderContext {
+	selectedArea: string;
+	overviewArea: string;
+	filteredAreaList: string[];
+	handleAreaInputChange: React.ChangeEventHandler<HTMLInputElement>;
+	handleAreaInputClear: Exclude<form.FieldProps["onClear"], undefined>;
+	handleAreaItemClick: form.AreaListPanelProps["onSelect"];
+	selectedInfraTitles: string[];
+	selectedItems: InfraItem[];
+	selectedTitleSet: Set<string>;
+	selectedOrderMap: Map<string, number>;
+	handleCardToggle: (title: string, checked: boolean) => void;
+	priceItems: Array<PriceItem & OnboardingPriceSelection & {
+		setEnabled: (checked: boolean) => void;
+		setRange: (range: PriceRange) => void;
+		setUnit: (unit: OnboardingPriceUnit) => void;
+	}>;
+}
+
+interface StepOptions {
+	heading: string;
+	description: string;
+	validate?: (ctx: StepRenderContext) => string | undefined;
+	renderOverview: (ctx: StepRenderContext) => React.ReactNode;
+	renderChildren: (ctx: StepRenderContext) => React.ReactNode;
+}
+
+
+
+const INFRA_BY_TITLE = new Map(INFRA_ITEMS.map(infra => [infra.title, infra] as const));
+
+/**
+ * @returns 가격 상태 기본값
+ */
+const createInitialOnboardingPriceState = (): OnboardingPriceState => ({
+	purchase: {
+		enabled: false,
+		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
+		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
+	},
+	jeonse: {
+		enabled: false,
+		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
+		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
+	},
+});
+
+function clampNumber(value: number, min: number, max: number): number {
+	return Math.max(min, Math.min(value, max));
+}
+
+function clonePriceState(source?: OnboardingPriceState): OnboardingPriceState {
+	const state = source ?? createInitialOnboardingPriceState();
+
+	return {
+		purchase: {
+			...state.purchase,
+			range: [...state.purchase.range] as PriceRange,
+		},
+		jeonse: {
+			...state.jeonse,
+			range: [...state.jeonse.range] as PriceRange,
+		},
+	};
+}
+
+function createOnboardingFormState (
+	preferredArea?: string,
+	infraTitles?: string[],
+	priceState?: OnboardingPriceState,
+): OnboardingFormState {
+	return {
+		preferredArea: preferredArea ?? "",
+		infraTitles: [...(infraTitles ?? [])],
+		priceState: clonePriceState(priceState),
+	};
+}
+
+function parseStepFromSearchParam(value: string | null): number {
 	if (value === null) return -1;
 
 	const parsed = Number(value);
 	if (!Number.isInteger(parsed)) return -1;
 
-	return parsed >= 0 && parsed < stepConfigs.length ? parsed : -1;
-};
-
-interface LocationState {
-	editingFromOnboarding: true;
+	return parsed >= 0 && parsed < STEP_OPTIONS.length ? parsed : -1;
 }
 
 function isOnboardingLocationState(state: unknown): state is LocationState {
@@ -388,40 +441,10 @@ function isOnboardingLocationState(state: unknown): state is LocationState {
 
 
 
-interface StepRenderContext {
-	selectedArea: string;
-	overviewArea: string;
-	areaList: string[];
-	filteredAreaList: string[];
-	handleAreaInputChange: React.ChangeEventHandler<HTMLInputElement>;
-	handleAreaInputClear: Exclude<form.FieldProps["onClear"], undefined>;
-	handleAreaItemClick: form.AreaListPanelProps["onSelect"];
-	selectedInfraTitles: string[];
-	selectedItems: InfraItem[];
-	selectedTitleSet: Set<string>;
-	selectedOrderMap: Map<string, number>;
-	handleCardToggle: (title: string) => void;
-	priceItems: Array<PriceItem & OnboardingPriceSelection & {
-		setEnabled: (checked: boolean) => void;
-		setRange: (range: PriceRange) => void;
-		setUnit: (unit: OnboardingPriceUnit) => void;
-	}>;
-}
-
-interface StepConfig {
-	heading: string;
-	description: string;
-	validate?: (ctx: StepRenderContext) => string | undefined;
-	renderOverview: (ctx: StepRenderContext) => React.ReactNode;
-	renderChildren: (ctx: StepRenderContext) => React.ReactNode;
-}
-
-
-
 interface CardProps extends InfraItem {
 	order?: number;
 	checked: boolean;
-	onChange: React.ChangeEventHandler<HTMLInputElement>;
+	onCheckChange: (check: boolean) => void;
 }
 
 function Card({
@@ -431,43 +454,38 @@ function Card({
 	color,
 	order,
 	checked,
-	...props
+	onCheckChange,
 }: CardProps) {
 	return (
-		<label
-			aria-pressed={checked}
+		<button
+			type="button"
+			role="checkbox"
+			aria-checked={checked}
+			aria-label={title}
+			onClick={() => onCheckChange(!checked)}
 			className={cn(
 				"relative transition-colors border-2 rounded-2xl shadow-md",
 				"p-4 space-y-1 text-left",
-				"block cursor-pointer",
-				checked ? "bg-(--c)/5 border-(--c)/80" : "bg-secondary border-foreground/10"
+				checked ? "bg-(--c)/5 border-(--c)/80" : "bg-secondary border-foreground/10",
 			)}
-			style={{
-				"--c": color,
-			} as React.CSSProperties}
+			style={{ "--c": color } as React.CSSProperties}
 		>
-			<input
-				type="checkbox"
-				className="sr-only"
-				checked={checked}
-				aria-label={title}
-				{...props}
+			<div
+				className="empty:hidden absolute top-2 right-2 bg-(--c)/80 size-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+				children={order}
 			/>
-			<div className="empty:hidden absolute top-2 right-2 bg-(--c)/80 size-6 rounded-full flex items-center justify-center text-xs font-bold text-white">{order}</div>
 			<div className="text-3xl">{icon}</div>
 			<h3 className="font-semibold">{title}</h3>
 			<p className="text-sm text-muted-foreground">{description}</p>
-		</label>
+		</button>
 	);
 }
 
 
 
 export function OnboardingPage() {
-	const {
-		preferredArea: defaultArea,
-	} = useAuthStore();
-
+	const formId = "onboarding-form";
+	const { preferredArea: defaultArea } = useAuthStore();
 	const {
 		preferredArea: storedPreferredArea = defaultArea,
 		infraTitles: storedInfraTitles = [],
@@ -476,32 +494,49 @@ export function OnboardingPage() {
 		reset: resetOnboarding,
 	} = useOnboardingStore();
 
+	const pendingFocusStepRef = useRef<number | null>(null);
+	const overviewEditButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [searchParams] = useSearchParams();
 	const [overviewErrorMessages, setOverviewErrorMessages] = useState<string[]>([]);
 	const [editorErrorMessages, setEditorErrorMessages] = useState<string[]>([]);
 	const [requestErrorMessage, setRequestErrorMessage] = useState("");
-	const [overviewArea, setOverviewArea] = useState(storedPreferredArea ?? "");
-	const [selectedArea, setSelectedArea] = useState(storedPreferredArea ?? "");
-	const [selectedInfraTitles, setSelectedInfraTitles] = useState(storedInfraTitles);
-	const [priceState, setPriceState] = useState(storedPriceState);
 
-	const step = useMemo(() => parseStepFromSearchParam(searchParams.get("step")), [searchParams]);
+	const [committedState, setCommittedState] = useState<OnboardingFormState>(() => createOnboardingFormState(
+		storedPreferredArea,
+		storedInfraTitles,
+		storedPriceState,
+	));
+	const [draftState, setDraftState] = useState<OnboardingFormState>(() => createOnboardingFormState(
+		storedPreferredArea,
+		storedInfraTitles,
+		storedPriceState,
+	));
+	const step = useMemo(
+		() => parseStepFromSearchParam(searchParams.get("step")),
+		[searchParams],
+	);
+
+	const isEditing = step >= 0;
+	const selectedArea = isEditing ? draftState.preferredArea : committedState.preferredArea;
+	const selectedInfraTitles = isEditing ? draftState.infraTitles : committedState.infraTitles;
+	const selectedPriceState = isEditing ? draftState.priceState : committedState.priceState;
 
 	const openEditor = useCallback((nextStep: number) => {
-		const nextSearchParams = new URLSearchParams(searchParams);
-		nextSearchParams.set("step", String(nextStep));
-		const searchString = nextSearchParams.toString();
+		const nextParams = new URLSearchParams(searchParams);
+		nextParams.set("step", String(nextStep));
 
-		navigate({
-			pathname: location.pathname,
-			search: `?${searchString}`
-		}, {
-			state: {
-				editingFromOnboarding: true,
-			} satisfies LocationState,
-		});
+		navigate(
+			{
+				pathname: location.pathname,
+				search: `?${nextParams.toString()}`,
+			},
+			{
+				state: { editingFromOnboarding: true } satisfies LocationState,
+			},
+		);
 	}, [location.pathname, navigate, searchParams]);
 
 	const closeEditor = useCallback(() => {
@@ -510,68 +545,93 @@ export function OnboardingPage() {
 			return;
 		}
 
-		const nextSearchParams = new URLSearchParams(searchParams);
-		nextSearchParams.delete("step");
-		const searchString = nextSearchParams.toString();
-		navigate({
-			pathname: location.pathname,
-			search: searchString ? `?${searchString}` : "",
-		}, { replace: true });
+		const nextParams = new URLSearchParams(searchParams);
+		nextParams.delete("step");
+
+		navigate(
+			{
+				pathname: location.pathname,
+				search: nextParams.toString() ? `?${nextParams.toString()}` : "",
+			},
+			{ replace: true },
+		);
 	}, [location.pathname, location.state, navigate, searchParams]);
 
-	const priceItemsWithState = useMemo(() => priceItems.map(item => {
-		const current = priceState[item.key];
+	useEffect(() => {
+		if (step >= 0 || pendingFocusStepRef.current === null) return;
 
-		return {
-			...item,
-			enabled: current.enabled,
-			range: current.range,
-			unit: current.unit,
-			setEnabled: (checked: boolean) => {
-				setPriceState(prev => ({
-					...prev,
-					[item.key]: {
-						...prev[item.key],
-						enabled: checked,
-					},
-				}));
-			},
-			setRange: (range: PriceRange) => {
-				setPriceState(prev => ({
-					...prev,
-					[item.key]: {
-						...prev[item.key],
-						range,
-					},
-				}));
-			},
-			setUnit: (unit: OnboardingPriceUnit) => {
-				setPriceState(prev => ({
-					...prev,
-					[item.key]: {
-						...prev[item.key],
-						unit,
-					},
-				}));
-			},
-		};
-	}), [priceState]);
+		const focusStep = pendingFocusStepRef.current;
+		pendingFocusStepRef.current = null;
 
-	const handleCardToggle = useCallback<StepRenderContext["handleCardToggle"]>(title => {
-		setSelectedInfraTitles(prev => (
-			prev.includes(title)
-				? prev.filter(x => x !== title)
-				: [...prev, title]
-		));
+		requestAnimationFrame(() => overviewEditButtonRefs.current[focusStep]?.focus());
+	}, [step]);
+
+	const updateDraft = useCallback((updater: (prev: OnboardingFormState) => OnboardingFormState) => {
+		setDraftState(prev => updater(prev));
 	}, []);
+
+	const setDraftPriceEnabled = useCallback((key: OnboardingPriceKey, enabled: boolean) => {
+		updateDraft(prev => ({
+			...prev,
+			priceState: {
+				...prev.priceState,
+				[key]: {
+					...prev.priceState[key],
+					enabled,
+				},
+			},
+		}));
+	}, [updateDraft]);
+
+	const setDraftPriceRange = useCallback((key: OnboardingPriceKey, range: PriceRange) => {
+		updateDraft(prev => ({
+			...prev,
+			priceState: {
+				...prev.priceState,
+				[key]: {
+					...prev.priceState[key],
+					range,
+				},
+			},
+		}));
+	}, [updateDraft]);
+
+	const setDraftPriceUnit = useCallback((key: OnboardingPriceKey, unit: OnboardingPriceUnit) => {
+		updateDraft(prev => ({
+			...prev,
+			priceState: {
+				...prev.priceState,
+				[key]: {
+					...prev.priceState[key],
+					unit,
+				},
+			},
+		}));
+	}, [updateDraft]);
+
+	const priceItemsWithState = useMemo(() => {
+		return PRICE_ITEMS.map(item => {
+			const current = selectedPriceState[item.key];
+
+			return {
+				...item,
+				enabled: current.enabled,
+				range: current.range,
+				unit: current.unit,
+				setEnabled: (checked: boolean) => setDraftPriceEnabled(item.key, checked),
+				setRange: (range: PriceRange) => setDraftPriceRange(item.key, range),
+				setUnit: (unit: OnboardingPriceUnit) => setDraftPriceUnit(item.key, unit),
+			};
+		});
+	}, [selectedPriceState, setDraftPriceEnabled, setDraftPriceRange, setDraftPriceUnit]);
 
 	const selectedTitleSet = useMemo(() => new Set(selectedInfraTitles), [selectedInfraTitles]);
 	const selectedOrderMap = useMemo(
-		() => new Map(selectedInfraTitles.map((title, index) => [title, index + 1] as const)),
+		() => new Map(selectedInfraTitles.map((title, idx) => [title, idx + 1] as const)),
 		[selectedInfraTitles],
 	);
 	const selectedItems = useMemo(
-		() => selectedInfraTitles.map(title => infraByTitle.get(title)).filter((infra): infra is InfraItem => !!infra),
+		() => selectedInfraTitles.map(title => INFRA_BY_TITLE.get(title)).filter((item): item is InfraItem => !!item),
 		[selectedInfraTitles],
 	);
 
@@ -580,98 +640,107 @@ export function OnboardingPage() {
 		[selectedArea],
 	);
 
-	const handleAreaInputChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>(event => {
-		setSelectedArea(event.target.value);
-	}, []);
+	const handleCardToggle = useCallback<StepRenderContext["handleCardToggle"]>((title) => {
+		updateDraft(prev => ({
+			...prev,
+			infraTitles: prev.infraTitles.includes(title)
+				? prev.infraTitles.filter(value => value !== title)
+				: [...prev.infraTitles, title],
+		}));
+	}, [updateDraft]);
+
+	const handleAreaInputChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>((event) => {
+		const nextValue = event.target.value;
+		updateDraft(prev => ({ ...prev, preferredArea: nextValue }));
+	}, [updateDraft]);
 
 	const handleAreaInputClear = useCallback<React.MouseEventHandler<HTMLButtonElement>>(() => {
-		setSelectedArea("");
-	}, []);
+		updateDraft(prev => ({ ...prev, preferredArea: "" }));
+	}, [updateDraft]);
 
 	const handleAreaItemClick = useCallback<form.AreaListPanelProps["onSelect"]>((event, area) => {
 		event.currentTarget.blur();
-		setSelectedArea(area);
-	}, []);
+		updateDraft(prev => ({ ...prev, preferredArea: area }));
+	}, [updateDraft]);
 
 	const stepContext = useMemo<StepRenderContext>(() => ({
-		handleCardToggle,
 		selectedArea,
-		overviewArea,
-		areaList: AREAS,
+		overviewArea: committedState.preferredArea,
 		filteredAreaList,
 		handleAreaInputChange,
 		handleAreaInputClear,
 		handleAreaItemClick,
 		selectedInfraTitles,
 		selectedItems,
-		selectedOrderMap,
 		selectedTitleSet,
+		selectedOrderMap,
+		handleCardToggle,
 		priceItems: priceItemsWithState,
 	}), [
-		handleCardToggle,
 		selectedArea,
-		overviewArea,
+		committedState.preferredArea,
 		filteredAreaList,
 		handleAreaInputChange,
 		handleAreaInputClear,
 		handleAreaItemClick,
 		selectedInfraTitles,
 		selectedItems,
-		selectedOrderMap,
 		selectedTitleSet,
+		selectedOrderMap,
+		handleCardToggle,
 		priceItemsWithState,
 	]);
 
 	const handleEditClick = useCallback((idx: number) => {
+		setDraftState(createOnboardingFormState(
+			committedState.preferredArea,
+			committedState.infraTitles,
+			committedState.priceState,
+		));
 		openEditor(idx);
-	}, [openEditor]);
+	}, [committedState, openEditor]);
 
 	const handleCancelClick = useCallback(() => {
-		const editingStep = step;
-		setSelectedArea(overviewArea);
-		setSelectedInfraTitles(storedInfraTitles);
-		setPriceState(storedPriceState);
+		if (step < 0) return;
+
+		pendingFocusStepRef.current = step;
+		setDraftState(createOnboardingFormState(
+			committedState.preferredArea,
+			committedState.infraTitles,
+			committedState.priceState,
+		));
 		setEditorErrorMessages(prev => {
 			const next = [...prev];
-			next[editingStep] = "";
+			next[step] = "";
 			return next;
 		});
 		closeEditor();
-	}, [
-		step,
-		overviewArea,
-		storedInfraTitles,
-		storedPriceState,
-		closeEditor,
-		setSelectedInfraTitles,
-		setSelectedArea,
-		setPriceState,
-	]);
+	}, [closeEditor, committedState, step]);
 
 	const handleResetClick = useCallback(() => {
+		const initialState = createOnboardingFormState(
+			defaultArea,
+			[],
+			createInitialOnboardingPriceState(),
+		);
+
 		resetOnboarding();
-		setOverviewArea(defaultArea ?? "");
-		setSelectedArea(defaultArea ?? "");
-		setSelectedInfraTitles([]);
-		setPriceState(createInitialOnboardingPriceState());
+		setCommittedState(initialState);
+		setDraftState(createOnboardingFormState(
+			initialState.preferredArea,
+			initialState.infraTitles,
+			initialState.priceState,
+		));
 		setOverviewErrorMessages([]);
 		setEditorErrorMessages([]);
 		setRequestErrorMessage("");
 		closeEditor();
-	}, [
-		defaultArea,
-		closeEditor,
-		resetOnboarding,
-		setEditorErrorMessages,
-		setOverviewArea,
-		setOverviewErrorMessages,
-		setPriceState,
-		setRequestErrorMessage,
-	]);
+	}, [closeEditor, defaultArea, resetOnboarding]);
 
 	const handleSaveClick = useCallback(() => {
-		const activeStep = stepConfigs[step];
-		const validationMessage = activeStep?.validate?.(stepContext);
+		if (step < 0) return;
+
+		const validationMessage = STEP_OPTIONS[step]?.validate?.(stepContext);
 		if (validationMessage) {
 			setEditorErrorMessages(prev => {
 				const next = [...prev];
@@ -680,12 +749,20 @@ export function OnboardingPage() {
 			});
 			return;
 		}
+
+		const nextCommittedState = createOnboardingFormState(
+			draftState.preferredArea,
+			draftState.infraTitles,
+			draftState.priceState,
+		);
+
+		setCommittedState(nextCommittedState);
 		setOnboarding({
-			preferredArea: selectedArea,
-			infraTitles: selectedInfraTitles,
-			priceState: priceState,
+			preferredArea: nextCommittedState.preferredArea,
+			infraTitles: nextCommittedState.infraTitles,
+			priceState: nextCommittedState.priceState,
 		});
-		setOverviewArea(selectedArea);
+
 		setOverviewErrorMessages(prev => {
 			const next = [...prev];
 			next[step] = "";
@@ -696,28 +773,32 @@ export function OnboardingPage() {
 			next[step] = "";
 			return next;
 		});
-		closeEditor();
-	}, [closeEditor, selectedArea, selectedInfraTitles, priceState, setOnboarding, step, stepContext]);
 
-	const handleFormSubmit = useCallback<React.SubmitEventHandler<HTMLFormElement>>(async (e) => {
-		e.preventDefault();
+		pendingFocusStepRef.current = step;
+		closeEditor();
+	}, [closeEditor, draftState, setOnboarding, step, stepContext]);
+
+	const handleFormSubmit = useCallback<React.SubmitEventHandler<HTMLFormElement>>(async (event) => {
+		event.preventDefault();
 		setRequestErrorMessage("");
 
-		const errors = stepConfigs.map(x => x.validate?.(stepContext) ?? "");
+		const errors = STEP_OPTIONS.map(x => x.validate?.(stepContext) ?? "");
+		const hasAnyError = errors.some(Boolean);
 
-		if (errors.filter(x => !!x).length) {
+		if (hasAnyError) {
 			setOverviewErrorMessages(errors);
 			setEditorErrorMessages([]);
 			return;
 		}
+
 		setOverviewErrorMessages([]);
 		setEditorErrorMessages([]);
 
 		try {
 			const response = await submitOnboarding({
-				preferredArea: selectedArea,
-				infraTitles: selectedInfraTitles,
-				priceState,
+				preferredArea: committedState.preferredArea,
+				infraTitles: committedState.infraTitles,
+				priceState: committedState.priceState,
 			});
 
 			if (!response.isSuccess) {
@@ -733,7 +814,7 @@ export function OnboardingPage() {
 		} catch (error) {
 			setRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [navigate, priceState, resetOnboarding, selectedArea, selectedInfraTitles, stepContext]);
+	}, [committedState, navigate, resetOnboarding, stepContext]);
 
 	return (
 		<div className="h-full flex flex-col">
@@ -743,11 +824,10 @@ export function OnboardingPage() {
 			/>
 			<main className="flex-1 px-4 py-6 space-y-6 mx-auto w-full max-w-3xl">
 				<form.Provider
-					id="onboarding-form"
+					id={formId}
 					onSubmit={handleFormSubmit}
 					className="px-2 space-y-4"
 				>
-					<ErrorAlert message={requestErrorMessage}/>
 					<div className="relative">
 						<section
 							inert={step < 0 ? undefined : true}
@@ -762,74 +842,77 @@ export function OnboardingPage() {
 								<h2 className="text-lg font-bold">검색 조건을 설정해 주세요</h2>
 								<p className="text-sm text-muted-foreground">원하는 조건에 맞는 집을 찾아드려요!</p>
 							</header>
-							{stepConfigs.map((stepConfig, index) => (
+
+							<ErrorAlert message={requestErrorMessage}/>
+
+							{STEP_OPTIONS.map((opts, idx) => (
 								<article
-									key={stepConfig.heading}
+									key={opts.heading}
 									className="relative group"
-									data-invalid={!!overviewErrorMessages[index]}
+									data-invalid={!!overviewErrorMessages[idx]}
 								>
 									<Button
+										ref={node => {
+											overviewEditButtonRefs.current[idx] = node;
+										}}
 										type="button"
 										variant="ghost"
-										children="수정"
 										className="absolute z-999 top-2 right-2 text-xs font-medium text-muted-foreground"
-										onClick={() => handleEditClick(index)}
+										onClick={() => handleEditClick(idx)}
+										children="수정"
 									/>
-									{stepConfig.renderOverview(stepContext)}
-									<ErrorLine
-										message={overviewErrorMessages[index]}
-									/>
+									{opts.renderOverview(stepContext)}
+									<ErrorLine message={overviewErrorMessages[idx]}/>
 								</article>
 							))}
 						</section>
 
-						{stepConfigs.map((stepConfig, index) => {
-							const isEditing = step === index;
+						{STEP_OPTIONS.map((opts, idx) => {
+							const currentIsEditing = step === idx;
 
 							return (
 								<section
-									key={`${stepConfig.heading}-editor`}
-									inert={isEditing ? undefined : true}
+									key={`${opts.heading}-editor`}
+									inert={currentIsEditing ? undefined : true}
 									className={cn(
 										"space-y-4 transition-all",
-										isEditing
+										currentIsEditing
 											? "static translate-x-0 opacity-100"
 											: "absolute inset-0 translate-x-12 opacity-0 pointer-events-none",
 									)}
 								>
 									<header className="px-2 space-y-1">
-										<h3 className="text-lg font-bold">{stepConfig.heading}</h3>
-										<p className="text-sm text-muted-foreground">{stepConfig.description}</p>
+										<h3 className="text-lg font-bold">{opts.heading}</h3>
+										<p className="text-sm text-muted-foreground">{opts.description}</p>
 									</header>
-									<ErrorAlert
-										message={editorErrorMessages[index] || overviewErrorMessages[index]}
-									/>
-									{stepConfig.renderChildren(stepContext)}
+									<ErrorAlert message={editorErrorMessages[idx] || overviewErrorMessages[idx]}/>
+									{opts.renderChildren(stepContext)}
 								</section>
 							);
 						})}
 					</div>
 				</form.Provider>
+
+				<Footer className="flex justify-center-safe gap-4">
+					<Button
+						size="lg"
+						variant="secondary"
+						type="button"
+						className="flex-1 rounded-full font-bold"
+						onClick={step < 0 ? handleResetClick : handleCancelClick}
+						children={step < 0 ? "초기화" : "취소"}
+					/>
+					<Button
+						size="lg"
+						variant="default"
+						type={step < 0 ? "submit" : "button"}
+						form={step < 0 ? formId : undefined}
+						className="flex-1 rounded-full font-bold"
+						onClick={step < 0 ? undefined : handleSaveClick}
+						children={step < 0 ? "다음" : "저장"}
+					/>
+				</Footer>
 			</main>
-			<Footer className="flex justify-center-safe gap-4 mx-auto max-w-md w-full">
-				<Button
-					size="lg"
-					variant="secondary"
-					type="button"
-					className="flex-1 rounded-full font-bold"
-					children={step < 0 ? "초기화" : "취소"}
-					onClick={step < 0 ? handleResetClick : handleCancelClick}
-				/>
-				<Button
-					size="lg"
-					variant="default"
-					type={step < 0 ? "submit" : "button"}
-					form={step < 0 ? "onboarding-form" : undefined}
-					className="flex-1 rounded-full font-bold"
-					children={step < 0 ? "다음" : "저장"}
-					onClick={step < 0 ? undefined : handleSaveClick}
-				/>
-			</Footer>
 		</div>
 	);
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRef, useCallback, useMemo, useReducer, useState } from "react";
 
 import * as validate from "@/lib/validate";
 import { AREAS } from "@/shared/areas";
@@ -18,93 +18,156 @@ import * as form from "@/components/form";
 
 
 
-const FIELDS = [
+type BaseFieldKey = typeof BASE_FIELD_KEYS[number];
+const BASE_FIELD_KEYS = [
 	"name",
 	"email",
 	"currentPassword",
 	"newPassword",
+] as const;
+
+type FieldKey = typeof FIELD_KEYS[number];
+const FIELD_KEYS = [
+	...BASE_FIELD_KEYS,
 	"preferredArea",
 ] as const;
 
+const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
+	Component: (props: form.FieldProps) => React.JSX.Element;
+	extraProps?: Partial<form.FieldProps>;
+}> = {
+	name: {
+		Component: form.NameField,
+	},
+	email: {
+		Component: form.EmailField,
+	},
+	currentPassword: {
+		Component: form.PasswordField,
+		extraProps: {
+			autoComplete: "current-password",
+		},
+	},
+	newPassword: {
+		Component: form.PasswordField,
+		extraProps: {
+			type: "password",
+			autoComplete: "new-password",
+		},
+	},
+};
 
 
-export type AccountFormField = typeof FIELDS[number];
-export type AccountFormFieldMap<T> = Record<AccountFormField, T>;
 
-export type AccountFormValues = AccountFormFieldMap<string>;
-export type AccountFormErrors = Partial<AccountFormValues>;
+type FieldMap<T> = Record<FieldKey, T>;
+type AccountFormValues = FieldMap<string>;
+type AccountFormErrors = Partial<AccountFormValues>;
+
+type AccountFormFieldOptionValue<K extends FieldKey> =
+	K extends "preferredArea"
+		? boolean | NormalizedAreaFieldOptions
+		: boolean | NormalizedFieldOptions;
+
+export type AccountFormFieldOptions = {
+	[K in FieldKey]?: AccountFormFieldOptionValue<K>;
+};
 
 interface NormalizedFieldOptions extends form.FieldProps {
-	defaultValue: string;
+	defaultValue?: string;
 }
 
 interface NormalizedAreaFieldOptions extends NormalizedFieldOptions {
 	selectMode?: "inline" | "dialog";
 }
 
-type AccountFormFieldOptionValue<K extends AccountFormField> =
-	K extends "preferredArea"
-		? boolean | NormalizedAreaFieldOptions
-		: boolean | NormalizedFieldOptions;
-
-export type AccountFormFieldOptions = {
-	[K in AccountFormField]?: AccountFormFieldOptionValue<K>;
-};
-
 type NormalizedAccountFormFieldOptions = {
-	[K in AccountFormField]: K extends "preferredArea" ? NormalizedAreaFieldOptions : NormalizedFieldOptions;
+	[K in FieldKey]: K extends "preferredArea" ? NormalizedAreaFieldOptions : NormalizedFieldOptions;
 };
 
-type ValidateOptions = Partial<AccountFormFieldMap<NormalizedFieldOptions>>;
+interface AccountFormState {
+	values: AccountFormValues;
+	errors: AccountFormErrors;
+}
+
+type AccountFormAction =
+	| { type: "set-field"; field: FieldKey; value: string }
+	| { type: "set-errors"; errors: AccountFormErrors };
 
 /**
  * 필드 옵션을 정규화하는 함수
- *
- * @param options 각 필드별로 on/off 또는 세부 옵션을 설정할 수 있는 객체
- * @returns 각 필드별로 세부 옵션이 포함된 객체
  */
 function normalizeFieldOptions(options: AccountFormFieldOptions) {
 	const normalizedOptions: Partial<NormalizedAccountFormFieldOptions> = {};
 
-	for (const field of FIELDS) {
+	for (const field of FIELD_KEYS) {
 		const option = options[field];
 
 		if (option === true) {
-			normalizedOptions[field] = { defaultValue: "" };
+			normalizedOptions[field] = { defaultValue: "" } as NormalizedAccountFormFieldOptions[typeof field];
 		} else if (option) {
 			normalizedOptions[field] = {
 				...option,
 				defaultValue: option.defaultValue ?? "",
-			};
+			} as NormalizedAccountFormFieldOptions[typeof field];
 		}
 	}
 
 	return normalizedOptions;
 }
 
+const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>): AccountFormValues => ({
+	name: fields.name?.defaultValue ?? "",
+	email: fields.email?.defaultValue ?? "",
+	newPassword: fields.newPassword?.defaultValue ?? "",
+	currentPassword: fields.currentPassword?.defaultValue ?? "",
+	preferredArea: fields.preferredArea?.defaultValue ?? "",
+});
+
+function accountFormReducer(state: AccountFormState, action: AccountFormAction): AccountFormState {
+	switch (action.type) {
+		case "set-field":
+			return {
+				values: {
+					...state.values,
+					[action.field]: action.value,
+				},
+				errors: {
+					...state.errors,
+					[action.field]: undefined,
+				},
+			};
+
+		case "set-errors":
+			return {
+				...state,
+				errors: action.errors,
+			};
+
+		default:
+			return state;
+	}
+}
+
 /**
- * 각 필드별로 유효성 검사를 수행하는 함수
- *
- * @param values 폼의 현재 입력값 객체
- * @param options 각 필드별로 어떤 유효성 검사를 수행할지 결정하는 옵션 객체
- * @returns 각 필드별 에러 메시지 객체
+ * 각 필드별 유효성 검사
  */
 function validateForm(
 	values: AccountFormValues,
-	{ name, email, currentPassword, newPassword, preferredArea }: ValidateOptions,
+	options: Partial<NormalizedAccountFormFieldOptions>,
 ): AccountFormErrors {
 	const nextErrors: AccountFormErrors = {};
 
-	if (name && name?.formNoValidate !== true) nextErrors.name = validate.name(values.name);
-	if (email && email?.formNoValidate !== true) nextErrors.email = validate.email(values.email);
-	if (currentPassword && currentPassword?.formNoValidate !== true) nextErrors.currentPassword = validate.password(values.currentPassword);
-	if (newPassword && newPassword?.formNoValidate !== true) nextErrors.newPassword = validate.password(values.newPassword);
-	if (preferredArea && preferredArea?.formNoValidate !== true) nextErrors.preferredArea = validate.area(values.preferredArea);
-
-	for (const curr in nextErrors) {
-		const key = curr as AccountFormField;
-		if (nextErrors[key] === undefined) {
-			delete nextErrors[key];
+	for (const field of FIELD_KEYS) {
+		if (options[field] && !options[field].formNoValidate) {
+			const key = (
+				field === "currentPassword" || field === "newPassword"
+					? "password"
+					: field === "preferredArea"
+						? "area"
+						: field
+			);
+			const msg = validate[key](values[field]);
+			if (msg) nextErrors[field] = msg;
 		}
 	}
 
@@ -121,7 +184,7 @@ export interface AccountFormProps extends Omit<form.ProviderProps, "onSubmit"> {
 }
 
 /**
- * 모든 필드에 대해 on/off가 가능한 범용 계정 폼 컴포넌트
+ * 모든 필드를 옵션으로 제어할 수 있는 계정 폼
  */
 export function AccountForm({
 	noValidate = false,
@@ -140,64 +203,47 @@ export function AccountForm({
 	const openDialogButtonRef = useRef<HTMLButtonElement>(null);
 	const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
 	const [areaDraftValue, setAreaDraftValue] = useState("");
-	const [formErrors, setFormErrors] = useState<AccountFormErrors>({});
-	const [formValues, setFormValues] = useState<AccountFormValues>({
-		name: fields.name?.defaultValue ?? "",
-		email: fields.email?.defaultValue ?? "",
-		newPassword: fields.newPassword?.defaultValue ?? "",
-		currentPassword: fields.currentPassword?.defaultValue ?? "",
-		preferredArea: fields.preferredArea?.defaultValue ?? "",
+	const [formState, dispatchFormState] = useReducer(accountFormReducer, {
+		values: createInitialValues(fields),
+		errors: {},
 	});
 
-	const resetField = useCallback((field: AccountFormField, value = "") => {
-		setFormValues((prev) => ({
-			...prev,
-			[field]: value,
-		}));
-		setFormErrors((prev) => ({
-			...prev,
-			[field]: undefined,
-		}));
+	const { values, errors } = formState;
+
+	const setFieldValue = useCallback((field: FieldKey, value: string) => {
+		dispatchFormState({ type: "set-field", field, value });
 	}, []);
 
-	const filteredAreaList = useMemo(() => {
-		return filterStringList(AREAS, formValues.preferredArea);
-	}, [formValues.preferredArea]);
+	const filteredAreaList = useMemo(
+		() => filterStringList(AREAS, isAreaDialogMode ? areaDraftValue : values.preferredArea),
+		[areaDraftValue, isAreaDialogMode, values.preferredArea],
+	);
 
 	const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
 		const { name, value } = event.target;
-		resetField(name as AccountFormField, value);
-	}, [resetField]);
+		setFieldValue(name as FieldKey, value);
+	}, [setFieldValue]);
 
 	const handleInputClear = useCallback<Exclude<form.FieldProps["onClear"], undefined>>((_, node) => {
 		if (!node) return;
-		resetField(node.name as AccountFormField);
-	}, [resetField]);
-
-	const areaInputChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
-		resetField("preferredArea", event.target.value);
-	}, [resetField]);
-
-	const areaItemClick: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
-		event.currentTarget.blur();
-		resetField("preferredArea", area);
-	}, [resetField]);
+		setFieldValue(node.name as FieldKey, "");
+	}, [setFieldValue]);
 
 	const openAreaDialog = useCallback(() => {
 		if (!preferredAreaField || preferredAreaField.readOnly || preferredAreaField.disabled) return;
-		setAreaDraftValue(formValues.preferredArea);
+		setAreaDraftValue(values.preferredArea);
 		setIsAreaDialogOpen(true);
-	}, [preferredAreaField, formValues.preferredArea]);
+	}, [preferredAreaField, values.preferredArea]);
 
 	const handleDialogOpenChange = useCallback((open: boolean) => {
 		if (!open) {
-			resetField("preferredArea", areaDraftValue);
+			setFieldValue("preferredArea", areaDraftValue);
 			setAreaDraftValue("");
 		} else {
-			setAreaDraftValue(formValues.preferredArea);
+			setAreaDraftValue(values.preferredArea);
 		}
 		setIsAreaDialogOpen(open);
-	}, [areaDraftValue, resetField, formValues.preferredArea]);
+	}, [areaDraftValue, setFieldValue, values.preferredArea]);
 
 	const handleDialogAreaChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
 		setAreaDraftValue(event.target.value);
@@ -207,26 +253,53 @@ export function AccountForm({
 		setAreaDraftValue("");
 	}, []);
 
+	const handleInlineAreaSelect: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
+		event.currentTarget.blur();
+		setFieldValue("preferredArea", area);
+	}, [setFieldValue]);
+
 	const handleDialogAreaSelect: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
 		event.currentTarget.blur();
-		resetField("preferredArea", area);
+		setFieldValue("preferredArea", area);
 		setAreaDraftValue(area);
 		setIsAreaDialogOpen(false);
-	}, [resetField]);
+	}, [setFieldValue]);
 
 	const handleFormSubmit: React.SubmitEventHandler<HTMLFormElement> = useCallback((event) => {
 		event.preventDefault();
 
 		if (!noValidate) {
-			const nextErrors = validateForm(formValues, fields);
-			setFormErrors(nextErrors);
-			if (Object.keys(nextErrors).length > 0) {
-				return;
-			}
+			const nextErrors = validateForm(values, fields);
+			dispatchFormState({
+				type: "set-errors",
+				errors: nextErrors,
+			});
+			if (Object.keys(nextErrors).length > 0) return;
 		}
 
-		onSubmit(event, formValues);
-	}, [fields, formValues, noValidate, onSubmit]);
+		onSubmit(event, values);
+	}, [fields, noValidate, onSubmit, values]);
+
+	const renderBaseField = useCallback((fieldKey: BaseFieldKey) => {
+		const fieldOption = fields[fieldKey];
+		if (!fieldOption) return null;
+
+		const { Component, extraProps } = BASE_FIELD_CONFIGS[fieldKey];
+
+		return (
+			<Component
+				key={fieldKey}
+				name={fieldKey}
+				value={values[fieldKey]}
+				errorMessage={errors[fieldKey]}
+				onChange={handleInputChange}
+				onClear={fieldOption.readOnly || fieldOption.disabled ? undefined : handleInputClear}
+				{...extraProps}
+				{...fieldOption}
+				defaultValue={undefined}
+			/>
+		);
+	}, [errors, fields, handleInputChange, handleInputClear, values]);
 
 	const showInlineAreaList = !!preferredAreaField && !preferredAreaField.readOnly && !preferredAreaField.disabled && !isAreaDialogMode;
 	const showAreaDialog = !!preferredAreaField && !preferredAreaField.readOnly && !preferredAreaField.disabled && isAreaDialogMode;
@@ -247,67 +320,19 @@ export function AccountForm({
 					message={errorMessage}
 				/>
 
-				{fields.name && (
-					<form.NameField
-						name="name"
-						value={formValues.name}
-						errorMessage={formErrors.name}
-						onChange={handleInputChange}
-						onClear={fields.name.readOnly || fields.name.disabled ? undefined : handleInputClear}
-						{...fields.name}
-						defaultValue={undefined}
-					/>
-				)}
+				{BASE_FIELD_KEYS.map(renderBaseField)}
 
-				{fields.email && (
-					<form.EmailField
-						name="email"
-						value={formValues.email}
-						errorMessage={formErrors.email}
-						onChange={handleInputChange}
-						onClear={fields.email.readOnly || fields.email.disabled ? undefined : handleInputClear}
-						{...fields.email}
-						defaultValue={undefined}
-					/>
-				)}
-
-				{fields.currentPassword && (
-					<form.PasswordField
-						name="currentPassword"
-						autoComplete="current-password"
-						value={formValues.currentPassword}
-						errorMessage={formErrors.currentPassword}
-						onChange={handleInputChange}
-						onClear={fields.currentPassword.readOnly || fields.currentPassword.disabled ? undefined : handleInputClear}
-						{...fields.currentPassword}
-						defaultValue={undefined}
-					/>
-				)}
-
-				{fields.newPassword && (
-					<form.PasswordField
-						name="newPassword"
-						type="password"
-						autoComplete="new-password"
-						value={formValues.newPassword}
-						errorMessage={formErrors.newPassword}
-						onChange={handleInputChange}
-						onClear={fields.newPassword.readOnly || fields.newPassword.disabled ? undefined : handleInputClear}
-						{...fields.newPassword}
-						defaultValue={undefined}
-					/>
-				)}
-
-				{fields.preferredArea && (
+				{preferredAreaField && (
 					<div>
 						<form.AreaField
 							name="preferredArea"
-							value={formValues.preferredArea}
-							errorMessage={formErrors.preferredArea}
-							onChange={areaInputChange}
-							onClear={fields.preferredArea.readOnly || fields.preferredArea.disabled ? undefined : handleInputClear}
-							{...fields.preferredArea}
+							value={values.preferredArea}
+							errorMessage={errors.preferredArea}
+							onChange={handleInputChange}
+							onClear={preferredAreaField.readOnly || preferredAreaField.disabled ? undefined : handleInputClear}
+							{...preferredAreaField}
 							readOnly={isAreaDialogMode || preferredAreaField.readOnly}
+							tabIndex={isAreaDialogMode ? -1 : undefined}
 							defaultValue={undefined}
 							rightIcon={isAreaDialogMode ? (
 								<Button
@@ -324,7 +349,7 @@ export function AccountForm({
 							<form.AreaListPanel
 								className="mt-2"
 								items={filteredAreaList}
-								onSelect={areaItemClick}
+								onSelect={handleInlineAreaSelect}
 							/>
 						)}
 					</div>

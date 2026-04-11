@@ -32,11 +32,6 @@ function useFormProviderContext(componentName: string) {
 export interface ProviderProps extends React.ComponentProps<"form"> {
 }
 
-export interface FieldProps extends FloatingLabelInputProps {
-}
-
-
-
 /**
  * 하위 컴포넌트들이 form.Provider 내부에서만 사용 가능하도록 하는 폼 컨테이너 컴포넌트
  */
@@ -46,6 +41,11 @@ export function Provider(props: ProviderProps) {
 			<form {...props}/>
 		</FormProviderContext.Provider>
 	);
+}
+
+
+
+export interface FieldProps extends FloatingLabelInputProps {
 }
 
 /**

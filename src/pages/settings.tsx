@@ -75,8 +75,8 @@ export function SettingsPage() {
 		name: storedName = "",
 		email: storedEmail = "",
 		preferredArea: storedPreferredArea = "",
+		set: setProfile,
 	} = useAuthStore();
-	const setProfile = useAuthStore(state => state.set);
 
 	const [isInfoSuccess, setIsInfoSuccess] = useState(false);
 	const [isPasswordSuccess, setIsPasswordSuccess] = useState(false);
@@ -172,9 +172,9 @@ export function SettingsPage() {
 
 			<main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-6">
 				<Section
-					title="사용자 정보"
+					title="사용자 프로필"
 					formId="info-form"
-					submitLabel="사용자 정보 저장"
+					submitLabel="프로필 저장"
 					fields={infoFields}
 					onSubmit={handleInfoSubmit}
 					errorMessage={infoRequestErrorMessage}

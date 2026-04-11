@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { AxiosResponse, AxiosRequestConfig } from "axios";
 
 import { BACKEND_URL } from "@/shared/env";
 
@@ -26,6 +27,6 @@ export const client = axios.create({
  *
  * @param props
  */
-export function request(props: Parameters<typeof client.request>[0]) {
-	return client.request(props);
+export function request<T = unknown, R = AxiosResponse<T>, D = unknown>(config: AxiosRequestConfig<D>): Promise<R> {
+	return client.request(config);
 }

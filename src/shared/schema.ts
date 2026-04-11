@@ -11,6 +11,7 @@ export type UpdatePasswordInput = z.infer<typeof updatePasswordInputSchema>;
 export type UpdatePasswordOutput = z.infer<typeof updatePasswordOutputSchema>;
 export type SubmitOnboardingInput = z.infer<typeof submitOnboardingInputSchema>;
 export type SubmitOnboardingOutput = z.infer<typeof submitOnboardingOutputSchema>;
+export type SessionResponseSchema = z.infer<typeof sessionResponseSchema>;
 
 
 
@@ -41,12 +42,14 @@ export const signInOutputSchema = signUpInputSchema.pick({
 	preferredArea: true,
 });
 
+
+
 /**
  * 사용자 정보(이름/동네) 수정 요청 데이터 스키마
  */
-export const updateProfileInfoInputSchema = z.object({
-	name: z.string().min(1),
-	preferredArea: z.string().min(1),
+export const updateProfileInfoInputSchema = signUpInputSchema.pick({
+	name: true,
+	preferredArea: true,
 });
 
 /**
@@ -68,6 +71,8 @@ export const updatePasswordInputSchema = z.object({
 export const updatePasswordOutputSchema = z.object({
 	isSuccess: z.boolean(),
 });
+
+
 
 /**
  * 온보딩 제출 요청 데이터 스키마
@@ -96,6 +101,8 @@ export const submitOnboardingOutputSchema = z.object({
 	isSuccess: z.boolean(),
 	uniqueId: z.union([z.string(), z.number()]),
 });
+
+
 
 /**
  * 세션 요청에 대한 응답 데이터 스키마 정의
