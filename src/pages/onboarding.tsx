@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { AREAS, INFRA_ITEMS, PRICE_UNITS } from "@/shared/enum";
 import type { InfraItem, InfraTitle, PriceUnit } from "@/shared/enum";
 import { ROUTES } from "@/shared/routes";
-import * as validate from "@/lib/validate";
+import * as schema from "@/shared/schema";
 import { submitOnboarding } from "@/lib/api";
 import { filterStringList } from "@/lib/filter-string-list";
 import { getRequestErrorMessage } from "@/lib/request-error";
@@ -73,7 +73,10 @@ const SECTION_OPTIONS: SectionOptions[] = [
 	{
 		heading: "선호하는 동네를 선택해 주세요",
 		description: "가입 시 선택한 동네는 변경되지 않아요!",
-		validate: ctx => validate.area(ctx.selectedArea),
+		validate: (ctx) => {
+			const parsed = schema.area.safeParse(ctx.selectedArea);
+			return parsed.success ? undefined : parsed.error.issues[0]?.message;
+		},
 		renderOverview: ctx => (
 			<form.AreaField
 				name="overviewArea"

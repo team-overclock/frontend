@@ -10,16 +10,16 @@ import {
 	type UpdatePasswordOutput,
 	type SubmitOnboardingInput,
 	type SubmitOnboardingOutput,
-	signInInputSchema,
-	signUpInputSchema,
-	signInOutputSchema,
-	updateProfileInfoInputSchema,
-	updateProfileInfoOutputSchema,
-	updatePasswordInputSchema,
-	updatePasswordOutputSchema,
-	submitOnboardingInputSchema,
-	submitOnboardingOutputSchema,
-	sessionResponseSchema,
+	signInInput,
+	signUpInput,
+	signInOutput,
+	updateProfileInfoInput,
+	updateProfileInfoOutput,
+	updatePasswordInput,
+	updatePasswordOutput,
+	submitOnboardingInput,
+	submitOnboardingOutput,
+	sessionResponse,
 } from "@/shared/schema";
 
 
@@ -30,7 +30,7 @@ import {
  * @param input 회원가입 폼 입력값 객체
  */
 export async function signUp(input: SignUpInput): Promise<void> {
-	const payload = signUpInputSchema.parse(input);
+	const payload = signUpInput.parse(input);
 
 	await request({
 		method: "POST",
@@ -45,7 +45,7 @@ export async function signUp(input: SignUpInput): Promise<void> {
  * @param input 로그인 폼 입력값 객체
  */
 export async function signIn(input: SignInInput): Promise<SignInOutput> {
-	const payload = signInInputSchema.parse(input);
+	const payload = signInInput.parse(input);
 
 	const response = await request({
 		method: "POST",
@@ -53,7 +53,7 @@ export async function signIn(input: SignInInput): Promise<SignInOutput> {
 		data: payload,
 	});
 
-	return signInOutputSchema.parse(response.data);
+	return signInOutput.parse(response.data);
 }
 
 /**
@@ -65,7 +65,7 @@ export async function getSession(): Promise<{ isLoggedIn: boolean }> {
 		url: "/auth/session",
 	});
 
-	const parsed = sessionResponseSchema.parse(response.data);
+	const parsed = sessionResponse.parse(response.data);
 	const isLoggedIn = parsed.isLoggedIn ?? !!parsed.user;
 
 	return { isLoggedIn };
@@ -75,7 +75,7 @@ export async function getSession(): Promise<{ isLoggedIn: boolean }> {
  * 사용자 정보(이름/동네) 수정 요청
  */
 export async function updateProfileInfo(input: UpdateProfileInfoInput): Promise<UpdateProfileInfoOutput> {
-	const payload = updateProfileInfoInputSchema.parse(input);
+	const payload = updateProfileInfoInput.parse(input);
 
 	const response = await request({
 		method: "PATCH",
@@ -83,14 +83,14 @@ export async function updateProfileInfo(input: UpdateProfileInfoInput): Promise<
 		data: payload,
 	});
 
-	return updateProfileInfoOutputSchema.parse(response.data);
+	return updateProfileInfoOutput.parse(response.data);
 }
 
 /**
  * 비밀번호 변경 요청
  */
 export async function updatePassword(input: UpdatePasswordInput): Promise<UpdatePasswordOutput> {
-	const payload = updatePasswordInputSchema.parse(input);
+	const payload = updatePasswordInput.parse(input);
 
 	const response = await request({
 		method: "PATCH",
@@ -98,14 +98,14 @@ export async function updatePassword(input: UpdatePasswordInput): Promise<Update
 		data: payload,
 	});
 
-	return updatePasswordOutputSchema.parse(response.data);
+	return updatePasswordOutput.parse(response.data);
 }
 
 /**
  * 온보딩 정보 제출 요청
  */
 export async function submitOnboarding(input: SubmitOnboardingInput): Promise<SubmitOnboardingOutput> {
-	const payload = submitOnboardingInputSchema.parse(input);
+	const payload = submitOnboardingInput.parse(input);
 
 	const response = await request({
 		method: "POST",
@@ -113,5 +113,5 @@ export async function submitOnboarding(input: SubmitOnboardingInput): Promise<Su
 		data: payload,
 	});
 
-	return submitOnboardingOutputSchema.parse(response.data);
+	return submitOnboardingOutput.parse(response.data);
 }

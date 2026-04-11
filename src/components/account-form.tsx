@@ -1,7 +1,7 @@
 import { useRef, useCallback, useMemo, useReducer, useState } from "react";
 
-import * as validate from "@/lib/validate";
 import { AREAS } from "@/shared/enum";
+import * as schema from "@/shared/schema";
 import { cn } from "@/lib/utils";
 import { filterStringList } from "@/lib/filter-string-list";
 
@@ -252,7 +252,7 @@ function validateForm(
 						? "area"
 						: field
 			);
-			const msg = validate[key](values[field]);
+			const msg = schema[key].safeParse(values[field]).error?.issues[0]?.message;
 			if (msg) nextErrors[field] = msg;
 		}
 	}
