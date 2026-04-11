@@ -482,9 +482,12 @@ export function AccountForm({
 
 							<div className="min-h-0 overflow-hidden">
 								<form.AreaListPanel
-									className="shadow-none rounded-none max-h-none h-full"
+									className="shadow-none rounded-none"
 									items={filteredAreaList}
 									onSelect={handleDialogAreaSelect}
+									style={{
+										"--area-listbox-height": "50svh",
+									} as React.CSSProperties}
 								/>
 							</div>
 						</form.Provider>

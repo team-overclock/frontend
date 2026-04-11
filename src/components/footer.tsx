@@ -15,7 +15,7 @@ export function Footer({
 	return (
 		<footer
 			className={cn(
-				"bg-background sticky bottom-0 py-4 w-full",
+				"bg-background mt-auto py-4 w-full",
 				className,
 			)}
 			{...props}

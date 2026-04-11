@@ -99,7 +99,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
 	const displayValue = isControlled ? value?.toString() ?? "" : uncontrolledValue;
 
 	return (
-		<div className={cn("space-y-1", className)}>
+		<div className={className}>
 			<InputGroup className="shadow-md h-auto bg-secondary overflow-hidden rounded-3xl">
 				<div className="relative w-full">
 					<InputGroupInput

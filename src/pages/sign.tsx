@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { NavLink, Navigate, useNavigate } from "react-router";
 
+import { cn } from "@/lib/utils";
 import { ROUTES } from "@/shared/routes";
 import { useSessionQuery, useSignInMutation, useSignUpMutation } from "@/hooks/auth";
 import { useAuthStore } from "@/stores/auth";
@@ -28,7 +29,7 @@ const badges = [
 /**
  * 페이지 헤더 컴포넌트의 props
  */
-interface HeaderProps {
+interface HeaderProps extends React.ComponentProps<"header"> {
 	/**
 	 * 헤더 상단에 표시할 이모지
 	 */
@@ -53,9 +54,9 @@ interface HeaderProps {
 /**
  * 페이지 헤더
  */
-function Header({ icon, title, subtitle, badges }: HeaderProps) {
+function Header({ icon, title, subtitle, badges, className, ...props }: HeaderProps) {
 	return (
-		<header className="space-y-3 border-b p-6 pt-12 text-center">
+		<header className={cn("border-b text-center", className)} {...props}>
 			<div className="inline-block text-6xl leading-none transition-[scale] hover:scale-110">{icon}</div>
 			<h1 className="text-3xl font-extrabold tracking-tight">{title}</h1>
 			<p className="text-sm text-muted-foreground">{subtitle}</p>
@@ -143,31 +144,29 @@ function SignPageContent({ mode }: SignPageProps) {
 	}
 
 	return (
-		<main className="mx-auto flex h-full w-full max-w-3xl flex-col *:px-6">
-			<div className="flex-1 space-y-7 py-7">
-				<Header
-					icon="🏠"
-					title="라이프맵"
-					subtitle="내 생활 스타일에 맞는 동네를 찾아드려요!"
-					badges={badges}
-				/>
-
-				<AccountForm
-					id={formId}
-					gap={18}
-					noValidate={isLogin}
-					onSubmit={handleSubmit}
-					errorMessage={requestErrorMessage}
-					fields={{
-						name: !isLogin,
-						email: true,
-						currentPassword: isLogin,
-						newPassword: !isLogin,
-						preferredArea: !isLogin,
-					}}
-				/>
-			</div>
-
+		<main className="flex-1 flex flex-col gap-6 w-full *:app-container">
+			<Header
+				icon="🏠"
+				title="라이프맵"
+				subtitle="내 생활 스타일에 맞는 동네를 찾아드려요!"
+				badges={badges}
+				className="space-y-3 pt-12 pb-6"
+			/>
+			<AccountForm
+				id={formId}
+				gap={18}
+				noValidate={isLogin}
+				onSubmit={handleSubmit}
+				errorMessage={requestErrorMessage}
+				className={cn("flex flex-col", !isLogin && "*:last:flex-1")}
+				fields={{
+					name: !isLogin,
+					email: true,
+					currentPassword: isLogin,
+					newPassword: !isLogin,
+					preferredArea: !isLogin,
+				}}
+			/>
 			<Footer className="flex flex-col items-center space-y-4">
 				<Button
 					type="submit"

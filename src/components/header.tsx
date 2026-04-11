@@ -37,10 +37,10 @@ export function Header({
 
 	return (
 		<header
-			className="bg-secondary sticky top-0 w-full z-10"
+			className="bg-secondary sticky top-0 w-full z-30"
 			{...props}
 		>
-			<div className={cn("flex items-center overflow-hidden px-1 h-16", className)}>
+			<div className={cn("app-container flex items-center overflow-hidden h-16", className)}>
 				<Button
 					type="button"
 					variant="ghost"

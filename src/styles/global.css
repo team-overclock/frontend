@@ -4,6 +4,7 @@
 @import "@fontsource-variable/noto-sans-kr";
 
 @import "./base.css" layer(base);
+@import "./utilities.css";
 
 
 

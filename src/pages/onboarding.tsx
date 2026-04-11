@@ -100,6 +100,9 @@ const SECTION_OPTIONS: SectionOptions[] = [
 					className="mt-2"
 					items={ctx.filteredAreaList}
 					onSelect={ctx.handleAreaItemClick}
+					style={{
+						"--area-listbox-height": "230px",
+					} as React.CSSProperties}
 				/>
 			</div>
 		),
@@ -833,80 +836,77 @@ export function OnboardingPage() {
 	}, [committedState, navigate, resetOnboarding, sectionContext]);
 
 	return (
-		<div className="h-full flex flex-col">
+		<div className="flex-1 flex flex-col h-full w-full">
 			<Header
 				heading="맞춤 검색 조건 선택"
-				className="mx-auto max-w-3xl"
 			/>
-			<main className="flex-1 px-4 py-6 space-y-6 mx-auto w-full max-w-3xl">
+			<main className="flex-1 flex flex-col py-6 gap-6 app-container">
 				<form.Provider
 					id={formId}
 					onSubmit={handleFormSubmit}
-					className="px-2 space-y-4"
+					className="flex-1 relative space-y-4"
 				>
-					<div className="relative">
-						<section
-							inert={currSection < 0 ? undefined : true}
-							className={cn(
-								"space-y-4 transition-all",
-								currSection < 0
-									? "static translate-x-0 opacity-100"
-									: "absolute inset-0 -translate-x-12 opacity-0 pointer-events-none",
-							)}
-						>
-							<header className="px-2 space-y-1">
-								<h2 className="text-lg font-bold">검색 조건을 설정해 주세요</h2>
-								<p className="text-sm text-muted-foreground">원하는 조건에 맞는 집을 찾아드려요!</p>
-							</header>
+					<section
+						inert={currSection < 0 ? undefined : true}
+						className={cn(
+							"space-y-4 transition-all",
+							currSection < 0
+								? "static translate-x-0 opacity-100"
+								: "absolute inset-0 h-0 -translate-x-12 opacity-0 pointer-events-none",
+						)}
+					>
+						<header className="px-2 space-y-1">
+							<h2 className="text-lg font-bold">검색 조건을 설정해 주세요</h2>
+							<p className="text-sm text-muted-foreground">원하는 조건에 맞는 집을 찾아드려요!</p>
+						</header>
 
-							<ErrorAlert message={requestErrorMessage}/>
+						<ErrorAlert message={requestErrorMessage}/>
 
-							{SECTION_OPTIONS.map((opts, idx) => (
-								<article
-									key={opts.heading}
-									className="relative group"
-									data-invalid={!!overviewErrorMessages[idx]}
-								>
-									<Button
-										ref={node => {
-											overviewEditButtonRefs.current[idx] = node;
-										}}
-										type="button"
-										variant="ghost"
-										className="absolute z-999 top-2 right-2 text-xs font-medium text-muted-foreground"
-										onClick={() => handleEditClick(idx)}
-										children="수정"
-									/>
-									{opts.renderOverview(sectionContext)}
-									<ErrorLine message={overviewErrorMessages[idx]}/>
-								</article>
-							))}
-						</section>
+						{SECTION_OPTIONS.map((opts, idx) => (
+							<article
+								key={opts.heading}
+								className="relative group"
+								data-invalid={!!overviewErrorMessages[idx]}
+							>
+								<Button
+									ref={node => {
+										overviewEditButtonRefs.current[idx] = node;
+									}}
+									type="button"
+									variant="ghost"
+									className="absolute z-999 top-2 right-2 text-xs font-medium text-muted-foreground"
+									onClick={() => handleEditClick(idx)}
+									children="수정"
+								/>
+								{opts.renderOverview(sectionContext)}
+								<ErrorLine message={overviewErrorMessages[idx]}/>
+							</article>
+						))}
+					</section>
 
-						{SECTION_OPTIONS.map((opts, idx) => {
-							const currentIsEditing = currSection === idx;
+					{SECTION_OPTIONS.map((opts, idx) => {
+						const currentIsEditing = currSection === idx;
 
-							return (
-								<section
-									key={`${opts.heading}-editor`}
-									inert={currentIsEditing ? undefined : true}
-									className={cn(
-										"space-y-4 transition-all",
-										currentIsEditing
-											? "static translate-x-0 opacity-100"
-											: "absolute inset-0 translate-x-12 opacity-0 pointer-events-none",
-									)}
-								>
-									<header className="px-2 space-y-1">
-										<h3 className="text-lg font-bold">{opts.heading}</h3>
-										<p className="text-sm text-muted-foreground">{opts.description}</p>
-									</header>
-									<ErrorAlert message={editorErrorMessages[idx] || overviewErrorMessages[idx]}/>
-									{opts.renderChildren(sectionContext)}
-								</section>
-							);
-						})}
-					</div>
+						return (
+							<section
+								key={`${opts.heading}-editor`}
+								inert={currentIsEditing ? undefined : true}
+								className={cn(
+									"space-y-4 transition-all",
+									currentIsEditing
+										? "static translate-x-0 opacity-100"
+										: "absolute inset-0 h-0 translate-x-12 opacity-0 pointer-events-none",
+								)}
+							>
+								<header className="px-2 space-y-1">
+									<h3 className="text-lg font-bold">{opts.heading}</h3>
+									<p className="text-sm text-muted-foreground">{opts.description}</p>
+								</header>
+								<ErrorAlert message={editorErrorMessages[idx] || overviewErrorMessages[idx]}/>
+								{opts.renderChildren(sectionContext)}
+							</section>
+						);
+					})}
 				</form.Provider>
 
 				<Footer className="flex justify-center-safe gap-4">
@@ -914,7 +914,7 @@ export function OnboardingPage() {
 						size="lg"
 						variant="secondary"
 						type="button"
-						className="flex-1 rounded-full font-bold"
+						className="flex-1 rounded-full font-bold shadow-md"
 						onClick={currSection < 0 ? handleResetClick : handleCancelClick}
 						children={currSection < 0 ? "초기화" : "취소"}
 					/>
@@ -923,7 +923,7 @@ export function OnboardingPage() {
 						variant="default"
 						type={currSection < 0 ? "submit" : "button"}
 						form={currSection < 0 ? formId : undefined}
-						className="flex-1 rounded-full font-bold"
+						className="flex-1 rounded-full font-bold shadow-md"
 						onClick={currSection < 0 ? undefined : handleSaveClick}
 						children={currSection < 0 ? "다음" : "저장"}
 					/>

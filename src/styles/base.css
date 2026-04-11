@@ -1,11 +1,20 @@
+html:has(body[data-scroll-locked]),
+html:has([data-slot="dialog-content"][data-state="open"]) {
+	overflow: hidden;
+}
+
+
+
 * {
 	@apply border-border outline-ring/50;
 } html {
 	@apply bg-background text-foreground;
 	@apply overflow-x-hidden;
 	@apply font-sans;
+} html, body, #root {
+	@apply min-h-svh;
 } #root {
-	@apply h-svh;
+	@apply flex flex-col items-center-safe;
 }
 
 

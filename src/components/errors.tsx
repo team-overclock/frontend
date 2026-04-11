@@ -53,8 +53,8 @@ export function ErrorLine({
 		<div
 			aria-live="polite"
 			className={cn(
-				"px-1 text-sm text-destructive overflow-hidden transition-[height]",
-				message?.length ? "h-5" : "h-0",
+				"px-1 text-sm text-destructive overflow-hidden transition-all",
+				message?.length ? "mt-1 h-5" : "mt-0 h-0",
 			)}
 			children={message}
 			{...props}

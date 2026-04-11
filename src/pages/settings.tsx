@@ -170,13 +170,12 @@ export function SettingsPage() {
 	}, [updatePasswordMutation]);
 
 	return (
-		<div className="h-full flex flex-col">
+		<>
 			<Header
 				heading="프로필 설정"
-				className="mx-auto max-w-3xl"
 			/>
 
-			<main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-6">
+			<main className="flex-1 flex flex-col gap-6 py-6 app-container">
 				<Section
 					title="사용자 프로필"
 					formId="info-form"
@@ -199,6 +198,6 @@ export function SettingsPage() {
 					className="py-7"
 				/>
 			</main>
-		</div>
+		</>
 	);
 }

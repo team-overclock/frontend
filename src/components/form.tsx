@@ -4,6 +4,7 @@ import { User2Icon, AtSignIcon, KeyRoundIcon, MapPinHouseIcon } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { AREAS } from "@/shared/enum";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Item, ItemContent } from "@/components/ui/item";
 import { FloatingLabelInput, type FloatingLabelInputProps } from "@/components/input";
 
@@ -147,26 +148,29 @@ export function AreaListPanel({
 			role="listbox"
 			aria-label="동네 목록"
 			className={cn(
-				"empty:hidden bg-secondary rounded-2xl shadow-md overflow-x-hidden transition-[max-height] h-full",
+				"empty:hidden pr-1 bg-secondary rounded-2xl shadow-md",
+				"h-(--area-listbox-height,auto) transition-[height]",
 				className,
 			)}
 			{...props}
 		>
-			{
-				items.length ? items.map(item => (
-					<Item key={item} asChild><button
-						role="option"
-						type="button"
-						className="rounded-none text-sm not-last:border-b hover:bg-background/50 transition-colors"
-						onClick={e => onSelect(e, item)}
-						children={`📍 ${item}`}
-					/></Item>
-				)) : (
-					<Item asChild><ItemContent className="text-muted-foreground">
-						동네를 찾을 수 없어요 😢
-					</ItemContent></Item>
-				)
-			}
+			<ScrollArea className="h-full **:data-[slot=scroll-area-viewport]:p-1 **:data-[slot=scroll-area-viewport]:pr-3">
+				{
+					items.length ? items.map(item => (
+						<Item key={item} className="rounded-2xl" asChild><button
+							role="option"
+							type="button"
+							className="hover:bg-background/50 transition-colors"
+							onClick={e => onSelect(e, item)}
+							children={`📍 ${item}`}
+						/></Item>
+					)) : (
+						<Item asChild><ItemContent className="text-muted-foreground">
+							동네를 찾을 수 없어요 😢
+						</ItemContent></Item>
+					)
+				}
+			</ScrollArea>
 		</div>
 	);
 }
