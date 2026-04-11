@@ -145,7 +145,7 @@ export function AreaListPanel({
 		<div
 			inert={!isOpen}
 			role="listbox"
-			aria-label="주소 목록"
+			aria-label="동네 목록"
 			className={cn(
 				"empty:hidden bg-secondary rounded-2xl shadow-md overflow-x-hidden transition-[max-height] h-full",
 				isOpen ? "max-h-64" : "max-h-0",
@@ -164,7 +164,7 @@ export function AreaListPanel({
 					/></Item>
 				)) : (
 					<Item asChild><ItemContent className="text-muted-foreground">
-						주소를 찾을 수 없어요 😢
+						동네를 찾을 수 없어요 😢
 					</ItemContent></Item>
 				)
 			}

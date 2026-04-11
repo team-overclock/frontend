@@ -6,7 +6,7 @@ import { ZodError } from "zod";
  */
 export function getRequestErrorMessage(error: unknown) {
 	if (error instanceof ZodError) {
-		return "서버 응답 형식이 올바르지 않아요. 백엔드 주소/포트를 확인해 주세요.";
+		return "서버 응답 형식이 올바르지 않아요. 백엔드 주소/포트 또는 응답 스키마를 확인해 주세요.";
 	}
 
 	if (!axios.isAxiosError(error)) {
