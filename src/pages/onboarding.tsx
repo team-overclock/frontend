@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { cn } from "@/lib/utils";
-import { AREAS, INFRA_ITEMS, PRICE_UNITS } from "@/shared/enum";
+import { convertToNumber } from "@/lib/price-unit";
+import { AREAS, INFRA_ITEMS, PRICE_UNITS, PRICE_KEYS } from "@/shared/enum";
 import type { InfraItem, InfraTitle, PriceUnit } from "@/shared/enum";
 import { ROUTES } from "@/shared/routes";
 import * as schema from "@/shared/schema";
@@ -805,7 +806,15 @@ export function OnboardingPage() {
 			const response = await submitOnboarding({
 				preferredArea: committedState.preferredArea,
 				infraTitles: committedState.infraTitles,
-				priceState: committedState.priceState,
+				priceState: PRICE_KEYS.reduce((acc, cur) => {
+					const state = committedState.priceState[cur];
+					acc[cur] = {
+						enabled: state.enabled,
+						min: convertToNumber(`${state.range[0]}${state.unit}`),
+						max: convertToNumber(`${state.range[1]}${state.unit}`),
+					};
+					return acc;
+				}, {} as schema.SubmitOnboardingInput["priceState"]),
 			});
 
 			if (!response.isSuccess) {

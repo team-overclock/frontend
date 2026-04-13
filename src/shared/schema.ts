@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AREAS, INFRA_TITLES, PRICE_KEYS, PRICE_UNITS } from "@/shared/enum";
+import { AREAS, INFRA_TITLES, PRICE_KEYS } from "@/shared/enum";
 
 
 
@@ -118,8 +118,8 @@ export const submitOnboardingInput = z.object({
 		z.enum(PRICE_KEYS),
 		z.object({
 			enabled: z.boolean(),
-			range: z.tuple([z.number(), z.number()]),
-			unit: z.enum(PRICE_UNITS),
+			min: z.number().nonnegative("가격은 음수일 수 없어요"),
+			max: z.number().nonnegative("가격은 음수일 수 없어요"),
 		}),
 	),
 });
