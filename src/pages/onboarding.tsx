@@ -45,7 +45,7 @@ import * as form from "@/components/form";
 const DEFAULT_PRICE_SLIDER_OPTIONS: PriceSliderOptions = {
 	min: 0,
 	max: 9999,
-	step: 1,
+	step: 0.1,
 	unit: "억 원",
 };
 
