@@ -14,7 +14,7 @@ pnpm install
 
 ```shell
 pnpm run build
-pnpm run preview
+pnpm run start
 ```
 
 ### 개발모드로 실행
