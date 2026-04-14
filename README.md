@@ -11,6 +11,12 @@
 pnpm install
 ```
 
+## 구성
+
+```shell
+cp .env.example .env # 환경변수 구성
+```
+
 ## 실행
 
 빌드 후 실행
