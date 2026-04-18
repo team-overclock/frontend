@@ -164,6 +164,7 @@ function SignPageContent({ mode }: SignPageProps) {
 					email: true,
 					currentPassword: isLogin,
 					newPassword: !isLogin,
+					newPasswordConfirm: !isLogin,
 					preferredArea: !isLogin,
 				}}
 			/>

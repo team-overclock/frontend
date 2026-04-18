@@ -31,6 +31,7 @@ const BASE_FIELD_KEYS = [
 	"email",
 	"currentPassword",
 	"newPassword",
+	"newPasswordConfirm",
 ] as const;
 
 /**
@@ -79,6 +80,14 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 			type: "password",
 			autoComplete: "new-password",
 			label: "새 비밀번호",
+		},
+	},
+	newPasswordConfirm: {
+		Component: form.PasswordField,
+		extraProps: {
+			type: "password",
+			autoComplete: "new-password",
+			label: "새 비밀번호 확인",
 		},
 	},
 };
@@ -225,6 +234,7 @@ const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>)
 	email: fields.email?.defaultValue ?? "",
 	currentPassword: fields.currentPassword?.defaultValue ?? "",
 	newPassword: fields.newPassword?.defaultValue ?? "",
+	newPasswordConfirm: fields.newPasswordConfirm?.defaultValue ?? "",
 	preferredArea: fields.preferredArea?.defaultValue ?? "",
 });
 
@@ -282,7 +292,7 @@ function validateForm(
 			&& !options[field].formNoValidate
 		) {
 			const key = (
-				field === "currentPassword" || field === "newPassword"
+				field === "currentPassword" || field === "newPassword" || field === "newPasswordConfirm"
 					? "password"
 					: field === "preferredArea"
 						? "area"
