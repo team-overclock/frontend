@@ -175,6 +175,7 @@ interface AccountFormState {
  */
 type AccountFormAction =
 	| { type: "set-field"; field: FieldKey; value: string }
+	| { type: "set-field-error"; field: FieldKey; error?: string }
 	| { type: "set-errors"; errors: AccountFormErrors };
 
 /**
@@ -259,6 +260,15 @@ function accountFormReducer(state: AccountFormState, action: AccountFormAction):
 				},
 			};
 
+		case "set-field-error":
+			return {
+				...state,
+				errors: {
+					...state.errors,
+					[action.field]: action.error,
+				},
+			};
+
 		case "set-errors":
 			return {
 				...state,
@@ -285,25 +295,37 @@ function validateForm(
 	for (const field of FIELD_KEYS) {
 		const value = values[field].trim();
 
-		if (
-			options[field]
-			&& options[field].enabled === true
-			&& !(options[field].required === false && value === "")
-			&& !options[field].formNoValidate
-		) {
-			const key = (
-				field === "currentPassword" || field === "newPassword" || field === "newPasswordConfirm"
-					? "password"
-					: field === "preferredArea"
-						? "area"
-						: field
-			);
-			const msg = schema[key].safeParse(value).error?.issues[0]?.message;
-			if (msg) nextErrors[field] = msg;
-		}
+		const msg = validateField(field, value, options[field]);
+		if (msg) nextErrors[field] = msg;
 	}
 
 	return nextErrors;
+}
+
+/**
+ * 필드 유효성 검사
+ */
+function validateField<F extends FieldKey>(
+	field: F,
+	value: string,
+	option?: NormalizedAccountFormFieldOptions[F],
+): string | undefined {
+	if (
+		!option
+		|| option.enabled !== true
+		|| (option.required === false && value === "")
+		|| option.formNoValidate
+	) return undefined;
+
+	const key = (
+		field === "currentPassword" || field === "newPassword" || field === "newPasswordConfirm"
+			? "password"
+			: field === "preferredArea"
+				? "area"
+				: field
+	) satisfies keyof typeof schema;
+
+	return schema[key].safeParse(value).error?.issues[0]?.message;
 }
 
 
@@ -357,14 +379,26 @@ export function AccountForm({
 		[areaDraftValue, isAreaDialogMode, values.preferredArea],
 	);
 
-	const handleInputChange = useCallback((
+	const handleInputChangeAndBlur = useCallback((
 		event: React.ChangeEvent<HTMLInputElement, Element>,
 		cb?: React.ChangeEventHandler<HTMLInputElement, HTMLInputElement>,
 	) => {
 		const { name, value } = event.target;
-		setFieldValue(name as FieldKey, value);
-		cb?.(event);
-	}, [setFieldValue]);
+		const field = name as FieldKey;
+		setFieldValue(field, value);
+
+		if (noValidate) return;
+		const error = validateField(field, value, fields[field]);
+		dispatchFormState({
+			type: "set-field-error",
+			field,
+			error,
+		});
+
+		if (!error) {
+			cb?.(event);
+		}
+	}, [fields, noValidate, setFieldValue]);
 
 	const handleInputClear = useCallback((
 		event: Parameters<Exclude<form.FieldProps["onClear"], undefined>>[0],
@@ -372,9 +406,18 @@ export function AccountForm({
 		cb?: form.FieldProps["onClear"],
 	) => {
 		if (!node) return;
-		setFieldValue(node.name as FieldKey, "");
+		const field = node.name as FieldKey;
+		setFieldValue(field, "");
+
+		if (noValidate) return;
+		dispatchFormState({
+			type: "set-field-error",
+			field,
+			error: validateField(field, "", fields[field]),
+		});
+
 		cb?.(event, node);
-	}, [setFieldValue]);
+	}, [fields, noValidate, setFieldValue]);
 
 	const openAreaDialog = useCallback(() => {
 		if (!preferredAreaField || preferredAreaField.readOnly || preferredAreaField.disabled) return;
@@ -385,12 +428,19 @@ export function AccountForm({
 	const handleDialogOpenChange = useCallback((open: boolean) => {
 		if (!open) {
 			setFieldValue("preferredArea", areaDraftValue);
+			if (!noValidate) {
+				dispatchFormState({
+					type: "set-field-error",
+					field: "preferredArea",
+					error: validateField("preferredArea", areaDraftValue, preferredAreaField),
+				});
+			}
 			setAreaDraftValue("");
 		} else {
 			setAreaDraftValue(values.preferredArea);
 		}
 		setIsAreaDialogOpen(open);
-	}, [areaDraftValue, setFieldValue, values.preferredArea]);
+	}, [noValidate, areaDraftValue, preferredAreaField, setFieldValue, values.preferredArea]);
 
 	const handleDialogAreaChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
 		setAreaDraftValue(event.target.value);
@@ -403,7 +453,14 @@ export function AccountForm({
 	const handleInlineAreaSelect: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
 		event.currentTarget.blur();
 		setFieldValue("preferredArea", area);
-	}, [setFieldValue]);
+
+		if (noValidate) return;
+		dispatchFormState({
+			type: "set-field-error",
+			field: "preferredArea",
+			error: validateField("preferredArea", area, preferredAreaField),
+		});
+	}, [noValidate, preferredAreaField, setFieldValue]);
 
 	const handleDialogAreaSelect: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
 		event.currentTarget.blur();
@@ -433,6 +490,7 @@ export function AccountForm({
 
 		const { Component, extraProps } = BASE_FIELD_CONFIGS[fieldKey];
 		const {
+			onBlur,
 			onClear,
 			onChange,
 			...renderableFieldOption
@@ -444,14 +502,15 @@ export function AccountForm({
 				name={fieldKey}
 				value={values[fieldKey]}
 				errorMessage={errors[fieldKey]}
-				onChange={e => handleInputChange(e, onChange)}
+				onBlur={e => handleInputChangeAndBlur(e, onBlur)}
+				onChange={e => handleInputChangeAndBlur(e, onChange)}
 				onClear={fieldOption.readOnly || fieldOption.disabled ? undefined : (...args) => handleInputClear(...args, onClear)}
 				{...extraProps}
 				{...renderableFieldOption}
 				defaultValue={undefined}
 			/>
 		);
-	}, [errors, fields, handleInputChange, handleInputClear, values]);
+	}, [errors, fields, handleInputChangeAndBlur, handleInputClear, values]);
 
 	const showInlineAreaList = !!preferredAreaField && preferredAreaField.enabled === true && !preferredAreaField.readOnly && !preferredAreaField.disabled && !isAreaDialogMode;
 	const showAreaDialog = !!preferredAreaField && preferredAreaField.enabled === true && !preferredAreaField.readOnly && !preferredAreaField.disabled && isAreaDialogMode;
@@ -483,7 +542,8 @@ export function AccountForm({
 								value={values.preferredArea}
 								errorMessage={errors.preferredArea}
 								{...renderablePreferredAreaField}
-								onChange={e => handleInputChange(e, renderablePreferredAreaField.onChange)}
+								onBlur={e => handleInputChangeAndBlur(e, renderablePreferredAreaField.onBlur)}
+								onChange={e => handleInputChangeAndBlur(e, renderablePreferredAreaField.onChange)}
 								onClear={preferredAreaField.readOnly || preferredAreaField.disabled ? undefined : (...args) => handleInputClear(...args, renderablePreferredAreaField.onClear)}
 								readOnly={isAreaDialogMode || preferredAreaField.readOnly}
 								tabIndex={isAreaDialogMode ? -1 : undefined}
@@ -537,7 +597,7 @@ export function AccountForm({
 										value={areaDraftValue}
 										onChange={handleDialogAreaChange}
 										onClear={handleDialogAreaClear}
-										{...preferredAreaField}
+										{...renderablePreferredAreaField}
 										defaultValue={undefined}
 									/>
 								</div></DialogDescription>
