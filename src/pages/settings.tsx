@@ -86,6 +86,8 @@ export function SettingsPage() {
 
 	const [isInfoSuccess, setIsInfoSuccess] = useState(false);
 	const [isPasswordSuccess, setIsPasswordSuccess] = useState(false);
+	const [currentPasswordMessage, setCurrentPasswordMessage] = useState("");
+	const [passwordConfirmMessage, setPasswordConfirmMessage] = useState("");
 	const [infoRequestErrorMessage, setInfoRequestErrorMessage] = useState("");
 	const [passwordRequestErrorMessage, setPasswordRequestErrorMessage] = useState("");
 
@@ -95,6 +97,7 @@ export function SettingsPage() {
 	const infoFields = useMemo<AccountFormFieldOptions>(() => ({
 		name: {
 			defaultValue: storedName,
+			required: false,
 		},
 		email: {
 			defaultValue: storedEmail,
@@ -103,6 +106,7 @@ export function SettingsPage() {
 		},
 		preferredArea: {
 			defaultValue: storedPreferredArea,
+			required: false,
 		},
 	}), [storedName, storedEmail, storedPreferredArea]);
 
@@ -111,19 +115,45 @@ export function SettingsPage() {
 			defaultValue: "",
 			label: "현재 비밀번호",
 			formNoValidate: true,
+			errorMessage: currentPasswordMessage,
+			onChange: () => {
+				if (!currentPasswordMessage) return;
+				setCurrentPasswordMessage("");
+			},
 		},
 		newPassword: {
 			defaultValue: "",
-			label: "새 비밀번호",
+			required: false,
 		},
-	}), []);
+		newPasswordConfirm: {
+			defaultValue: "",
+			formNoValidate: true,
+			errorMessage: passwordConfirmMessage,
+			onChange: () => {
+				if (!passwordConfirmMessage) return;
+				setPasswordConfirmMessage("");
+			},
+			onClear: () => {
+				if (!passwordConfirmMessage) return;
+				setPasswordConfirmMessage("");
+			},
+		},
+	}), [currentPasswordMessage, passwordConfirmMessage]);
 
  	const handleInfoSubmit = useCallback<AccountFormProps["onSubmit"]>(async (_, formValues) => {
 		setInfoRequestErrorMessage("");
 		setIsInfoSuccess(false);
 
-		const name = formValues.name.trim();
-		const preferredArea = formValues.preferredArea.trim();
+		const name = formValues.name.trim() || storedName;
+		const preferredArea = formValues.preferredArea.trim() || storedPreferredArea;
+
+		if (
+			name === storedName
+			&& preferredArea === storedPreferredArea
+		) {
+			setIsInfoSuccess(true);
+			return;
+		}
 
 		try {
 			const updatedProfile = await updateProfileInfoMutation.mutateAsync({
@@ -140,7 +170,7 @@ export function SettingsPage() {
 		} catch (error) {
 			setInfoRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [setProfile, updateProfileInfoMutation]);
+	}, [storedName, storedPreferredArea, setProfile, updateProfileInfoMutation]);
 
 	const handlePasswordSubmit = useCallback<AccountFormProps["onSubmit"]>(async (_, formValues) => {
 		setPasswordRequestErrorMessage("");
@@ -148,9 +178,15 @@ export function SettingsPage() {
 
 		const currentPassword = formValues.currentPassword.trim();
 		const newPassword = formValues.newPassword.trim();
+		const newPasswordConfirm = formValues.newPasswordConfirm.trim();
 
-		if (currentPassword !== newPassword) {
-			setPasswordRequestErrorMessage("두 비밀번호가 달라요.");
+		if (!newPassword && !newPasswordConfirm) {
+			return;
+		} else if (!currentPassword) {
+			setCurrentPasswordMessage("현재 비밀번호를 입력해주세요.");
+			return;
+		} else if (newPassword !== newPasswordConfirm) {
+			setPasswordConfirmMessage("비밀번호가 일치하지 않아요.");
 			return;
 		}
 
