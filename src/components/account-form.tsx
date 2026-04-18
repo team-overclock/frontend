@@ -357,14 +357,23 @@ export function AccountForm({
 		[areaDraftValue, isAreaDialogMode, values.preferredArea],
 	);
 
-	const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
+	const handleInputChange = useCallback((
+		event: React.ChangeEvent<HTMLInputElement, Element>,
+		cb?: React.ChangeEventHandler<HTMLInputElement, HTMLInputElement>,
+	) => {
 		const { name, value } = event.target;
 		setFieldValue(name as FieldKey, value);
+		cb?.(event);
 	}, [setFieldValue]);
 
-	const handleInputClear = useCallback<Exclude<form.FieldProps["onClear"], undefined>>((_, node) => {
+	const handleInputClear = useCallback((
+		event: Parameters<Exclude<form.FieldProps["onClear"], undefined>>[0],
+		node: Parameters<Exclude<form.FieldProps["onClear"], undefined>>[1],
+		cb?: form.FieldProps["onClear"],
+	) => {
 		if (!node) return;
 		setFieldValue(node.name as FieldKey, "");
+		cb?.(event, node);
 	}, [setFieldValue]);
 
 	const openAreaDialog = useCallback(() => {
@@ -423,7 +432,11 @@ export function AccountForm({
 		if (!fieldOption || fieldOption.enabled !== true) return null;
 
 		const { Component, extraProps } = BASE_FIELD_CONFIGS[fieldKey];
-		const renderableFieldOption = omitEnabledFlag(fieldOption);
+		const {
+			onClear,
+			onChange,
+			...renderableFieldOption
+		} = omitEnabledFlag(fieldOption);
 
 		return (
 			<Component
@@ -431,8 +444,8 @@ export function AccountForm({
 				name={fieldKey}
 				value={values[fieldKey]}
 				errorMessage={errors[fieldKey]}
-				onChange={handleInputChange}
-				onClear={fieldOption.readOnly || fieldOption.disabled ? undefined : handleInputClear}
+				onChange={e => handleInputChange(e, onChange)}
+				onClear={fieldOption.readOnly || fieldOption.disabled ? undefined : (...args) => handleInputClear(...args, onClear)}
 				{...extraProps}
 				{...renderableFieldOption}
 				defaultValue={undefined}
@@ -469,9 +482,9 @@ export function AccountForm({
 								name="preferredArea"
 								value={values.preferredArea}
 								errorMessage={errors.preferredArea}
-								onChange={handleInputChange}
-								onClear={preferredAreaField.readOnly || preferredAreaField.disabled ? undefined : handleInputClear}
 								{...renderablePreferredAreaField}
+								onChange={e => handleInputChange(e, renderablePreferredAreaField.onChange)}
+								onClear={preferredAreaField.readOnly || preferredAreaField.disabled ? undefined : (...args) => handleInputClear(...args, renderablePreferredAreaField.onClear)}
 								readOnly={isAreaDialogMode || preferredAreaField.readOnly}
 								tabIndex={isAreaDialogMode ? -1 : undefined}
 								defaultValue={undefined}
