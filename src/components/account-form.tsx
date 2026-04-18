@@ -69,6 +69,7 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 	currentPassword: {
 		Component: form.PasswordField,
 		extraProps: {
+			type: "password",
 			autoComplete: "current-password",
 		},
 	},
@@ -77,6 +78,7 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 		extraProps: {
 			type: "password",
 			autoComplete: "new-password",
+			label: "새 비밀번호",
 		},
 	},
 };
@@ -113,10 +115,19 @@ export type AccountFormFieldOptions = {
 	[K in FieldKey]?: AccountFormFieldOptionValue<K>;
 };
 
+interface BaseOptions {
+	enabled?: boolean;
+
+	/**
+	 * 필드 필수 여부, 값이 있을 경우에만 검증을 진행함
+	 */
+	required?: boolean;
+}
+
 /**
  * 기본 필드 정규화 옵션 타입
  */
-interface NormalizedFieldOptions extends form.FieldProps {
+interface NormalizedFieldOptions extends form.FieldProps, BaseOptions {
 	defaultValue?: string;
 }
 
@@ -173,16 +184,34 @@ function normalizeFieldOptions(options: AccountFormFieldOptions) {
 		const option = options[field];
 
 		if (option === true) {
-			normalizedOptions[field] = { defaultValue: "" } as NormalizedAccountFormFieldOptions[typeof field];
+			normalizedOptions[field] = {
+				enabled: true,
+				defaultValue: "",
+			};
 		} else if (option) {
 			normalizedOptions[field] = {
 				...option,
 				defaultValue: option.defaultValue ?? "",
+				enabled: option.enabled ?? true
 			} as NormalizedAccountFormFieldOptions[typeof field];
 		}
 	}
 
 	return normalizedOptions;
+}
+
+/**
+ * {@link BaseOptions} key를 제거한 필드 props 반환 함수
+ *
+ * @param option 정규화된 필드 props
+ */
+function omitEnabledFlag<T extends Partial<BaseOptions>>(option: T) {
+	const {
+		enabled: _enabled,
+		required: _required,
+		...rest
+	} = option;
+	return rest;
 }
 
 /**
@@ -194,8 +223,8 @@ function normalizeFieldOptions(options: AccountFormFieldOptions) {
 const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>): AccountFormValues => ({
 	name: fields.name?.defaultValue ?? "",
 	email: fields.email?.defaultValue ?? "",
-	newPassword: fields.newPassword?.defaultValue ?? "",
 	currentPassword: fields.currentPassword?.defaultValue ?? "",
+	newPassword: fields.newPassword?.defaultValue ?? "",
 	preferredArea: fields.preferredArea?.defaultValue ?? "",
 });
 
@@ -244,7 +273,14 @@ function validateForm(
 	const nextErrors: AccountFormErrors = {};
 
 	for (const field of FIELD_KEYS) {
-		if (options[field] && !options[field].formNoValidate) {
+		const value = values[field].trim();
+
+		if (
+			options[field]
+			&& options[field].enabled === true
+			&& !(options[field].required === false && value === "")
+			&& !options[field].formNoValidate
+		) {
 			const key = (
 				field === "currentPassword" || field === "newPassword"
 					? "password"
@@ -252,7 +288,7 @@ function validateForm(
 						? "area"
 						: field
 			);
-			const msg = schema[key].safeParse(values[field]).error?.issues[0]?.message;
+			const msg = schema[key].safeParse(value).error?.issues[0]?.message;
 			if (msg) nextErrors[field] = msg;
 		}
 	}
@@ -374,9 +410,10 @@ export function AccountForm({
 
 	const renderBaseField = useCallback((fieldKey: BaseFieldKey) => {
 		const fieldOption = fields[fieldKey];
-		if (!fieldOption) return null;
+		if (!fieldOption || fieldOption.enabled !== true) return null;
 
 		const { Component, extraProps } = BASE_FIELD_CONFIGS[fieldKey];
+		const renderableFieldOption = omitEnabledFlag(fieldOption);
 
 		return (
 			<Component
@@ -387,14 +424,15 @@ export function AccountForm({
 				onChange={handleInputChange}
 				onClear={fieldOption.readOnly || fieldOption.disabled ? undefined : handleInputClear}
 				{...extraProps}
-				{...fieldOption}
+				{...renderableFieldOption}
 				defaultValue={undefined}
 			/>
 		);
 	}, [errors, fields, handleInputChange, handleInputClear, values]);
 
-	const showInlineAreaList = !!preferredAreaField && !preferredAreaField.readOnly && !preferredAreaField.disabled && !isAreaDialogMode;
-	const showAreaDialog = !!preferredAreaField && !preferredAreaField.readOnly && !preferredAreaField.disabled && isAreaDialogMode;
+	const showInlineAreaList = !!preferredAreaField && preferredAreaField.enabled === true && !preferredAreaField.readOnly && !preferredAreaField.disabled && !isAreaDialogMode;
+	const showAreaDialog = !!preferredAreaField && preferredAreaField.enabled === true && !preferredAreaField.readOnly && !preferredAreaField.disabled && isAreaDialogMode;
+	const renderablePreferredAreaField = preferredAreaField ? omitEnabledFlag(preferredAreaField) : undefined;
 
 	return (
 		<>
@@ -416,26 +454,28 @@ export function AccountForm({
 
 				{preferredAreaField && (
 					<div>
-						<form.AreaField
-							name="preferredArea"
-							value={values.preferredArea}
-							errorMessage={errors.preferredArea}
-							onChange={handleInputChange}
-							onClear={preferredAreaField.readOnly || preferredAreaField.disabled ? undefined : handleInputClear}
-							{...preferredAreaField}
-							readOnly={isAreaDialogMode || preferredAreaField.readOnly}
-							tabIndex={isAreaDialogMode ? -1 : undefined}
-							defaultValue={undefined}
-							rightIcon={isAreaDialogMode ? (
-								<Button
-									ref={openDialogButtonRef}
-									type="button"
-									onClick={openAreaDialog}
-									className="mr-3"
-									children="📍 동네 찾기"
-								/>
-							) : undefined}
-						/>
+						{preferredAreaField.enabled === true && renderablePreferredAreaField && (
+							<form.AreaField
+								name="preferredArea"
+								value={values.preferredArea}
+								errorMessage={errors.preferredArea}
+								onChange={handleInputChange}
+								onClear={preferredAreaField.readOnly || preferredAreaField.disabled ? undefined : handleInputClear}
+								{...renderablePreferredAreaField}
+								readOnly={isAreaDialogMode || preferredAreaField.readOnly}
+								tabIndex={isAreaDialogMode ? -1 : undefined}
+								defaultValue={undefined}
+								rightIcon={isAreaDialogMode ? (
+									<Button
+										ref={openDialogButtonRef}
+										type="button"
+										onClick={openAreaDialog}
+										className="mr-3"
+										children="📍 동네 찾기"
+									/>
+								) : undefined}
+							/>
+						)}
 
 						{showInlineAreaList && (
 							<form.AreaListPanel
