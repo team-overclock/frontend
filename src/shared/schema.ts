@@ -28,7 +28,7 @@ export const name = z.string()
  */
 export const email = z.string()
 	.trim()
-	.min(1, "이메일이 입력되지 않았아요")
+	.min(1, "이메일이 입력되지 않았어요")
 	.pipe(z.email("유효하지 않은 이메일 형식이에요"));
 
 /**
@@ -36,7 +36,7 @@ export const email = z.string()
  */
 export const password = z.string()
 	.trim()
-	.min(1, "비밀번호가 입력되지 않았아요")
+	.min(1, "비밀번호가 입력되지 않았어요")
 	.min(8, "비밀번호는 최소 8자 이상이어야 해요");
 
 /**
@@ -44,7 +44,7 @@ export const password = z.string()
  */
 export const area = z.string()
 	.trim()
-	.min(1, "동네가 입력되지 않았아요")
+	.min(1, "동네가 입력되지 않았어요")
 	.refine(value => (AREAS as readonly string[]).includes(value), "지원하지 않는 동네예요");
 
 
