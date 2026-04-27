@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv bash
+
+if [ "$NODE_ENV" != "production" ]; then
+	lsiown abc:abc /app/node_modules
+fi
