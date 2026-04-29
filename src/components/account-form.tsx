@@ -80,6 +80,7 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 			type: "password",
 			autoComplete: "new-password",
 			label: "새 비밀번호",
+			nextFields: ["newPasswordConfirm"],
 		},
 	},
 	newPasswordConfirm: {
@@ -88,6 +89,11 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 			type: "password",
 			autoComplete: "new-password",
 			label: "새 비밀번호 확인",
+			validator: ({ newPassword }, value) => {
+				if (value !== newPassword) {
+					return "비밀번호가 일치하지 않습니다.";
+				}
+			},
 		},
 	},
 };
@@ -150,6 +156,21 @@ interface BaseOptions {
 	 * 필드 필수 여부, 값이 있을 경우에만 검증을 진행함
 	 */
 	required?: boolean;
+
+	/**
+	 * 해당 필드 검증 후 추가로 검증을 수행할 필드 키 목록.
+	 * 해당 필드가 비활성화인 경우 무시됨
+	 */
+	nextFields?: FieldKey[];
+
+	/**
+	 * 해당 필드의 기본 유효성 검사 대신 사용할 커스텀 검증 함수
+	 *
+	 * @param values 폼 내 모든 입력값
+	 * @param value 입력값
+	 * @returns 에러 메시지, 값이 있으면 검증 실패로 간주
+	 */
+	validator?: (values: AccountFormValues, value: string) => string | undefined,
 }
 
 /**
@@ -194,7 +215,6 @@ interface AccountFormState {
  */
 type AccountFormAction =
 	| { type: "set-field"; field: FieldKey; value: string }
-	| { type: "set-field-error"; field: FieldKey; error?: string }
 	| { type: "set-errors"; errors: AccountFormErrors };
 
 /**
@@ -242,6 +262,8 @@ function omitEnabledFlag<T extends Partial<BaseOptions>>(option: T) {
 	const {
 		enabled: _enabled,
 		required: _required,
+		validator: _validator,
+		nextFields: _nextFields,
 		...rest
 	} = option;
 	return rest;
@@ -283,19 +305,13 @@ function accountFormReducer(state: AccountFormState, action: AccountFormAction):
 				},
 			};
 
-		case "set-field-error":
-			return {
-				...state,
-				errors: {
-					...state.errors,
-					[action.field]: action.error,
-				},
-			};
-
 		case "set-errors":
 			return {
-				...state,
-				errors: action.errors,
+				values: state.values,
+				errors: {
+					...state.errors,
+					...action.errors,
+				},
 			};
 
 		default:
@@ -315,11 +331,10 @@ function validateForm(
 	 */
 	const nextErrors: AccountFormErrors = {};
 
+	const visitedFields = new Set<FieldKey>();
 	for (const field of FIELD_KEYS) {
 		const value = values[field].trim();
-
-		const msg = validateField(field, value, options[field]);
-		if (msg) nextErrors[field] = msg;
+		validateField(values, options, field, value, options[field], nextErrors, visitedFields);
 	}
 
 	return nextErrors;
@@ -329,25 +344,44 @@ function validateForm(
  * 필드 유효성 검사
  */
 function validateField<F extends FieldKey>(
+	values: AccountFormValues,
+	options: Partial<NormalizedAccountFormFieldOptions>,
 	field: F,
 	value: string,
 	option: NormalizedAccountFormFieldOptions[F] = {},
-): string | undefined {
+	nextErrors: AccountFormErrors = {},
+	visitedFields = new Set<FieldKey>(),
+): AccountFormErrors {
+	if (visitedFields.has(field)) {
+		return nextErrors;
+	}
+	visitedFields.add(field);
 	if (
 		option.enabled !== true
 		|| (option.required === false && value === "")
 		|| option.formNoValidate
-	) return undefined;
+	) return nextErrors;
 
-	const key = (
-		field === "currentPassword" || field === "newPassword" || field === "newPasswordConfirm"
-			? "password"
-			: field === "preferredArea"
-				? "area"
-				: field
-	) satisfies keyof typeof schema;
+	if (option.validator) {
+		nextErrors[field] = option.validator(values, value);
+	} else {
+		const key = (
+			field.includes("Password")
+				? "password"
+				: field === "preferredArea"
+					? "area"
+					: field
+		) as keyof typeof schema;
+		nextErrors[field] = schema[key].safeParse(value).error?.issues[0]?.message;
+	}
 
-	return schema[key].safeParse(value).error?.issues[0]?.message;
+	for (const nextField of option.nextFields ?? []) {
+		const nextValue =  values[nextField].trim();
+		if (!nextValue) continue;
+		validateField(values, options, nextField, nextValue, options[nextField], nextErrors, visitedFields);
+	}
+
+	return nextErrors;
 }
 
 
@@ -417,22 +451,22 @@ export function AccountForm({
 			...values,
 			[field]: value,
 		};
-		const error = validateField(field, value, fields[field]);
+		const errors = validateField(nextValues, fields, field, value, fields[field]);
 		dispatchFormState({
-			type: "set-field-error",
-			field,
-			error,
+			type: "set-errors",
+			errors,
 		});
+
 		onValidate?.({
 			scope: "field",
 			field,
 			value,
-			error,
-			isValid: !error,
+			error: errors[field],
+			isValid: !errors[field],
 			values: nextValues,
 		});
 
-		if (!error) {
+		if (!errors[field]) {
 			cb?.(event);
 		}
 	}, [fields, noValidate, setFieldValue, onValidate, values]);
@@ -452,18 +486,17 @@ export function AccountForm({
 			...values,
 			[field]: "",
 		};
-		const error = validateField(field, "", fields[field]);
+		const errors = validateField(nextValues, fields, field, "", fields[field]);
 		dispatchFormState({
-			type: "set-field-error",
-			field,
-			error,
+			type: "set-errors",
+			errors,
 		});
 		onValidate?.({
 			scope: "field",
 			field,
 			value: "",
-			error,
-			isValid: !error,
+			error: errors[field],
+			isValid: !errors[field],
 			values: nextValues,
 		});
 
@@ -484,18 +517,17 @@ export function AccountForm({
 					...values,
 					preferredArea: areaDraftValue,
 				};
-				const error = validateField("preferredArea", areaDraftValue, preferredAreaField);
+				const errors = validateField(values, fields, "preferredArea", areaDraftValue, preferredAreaField);
 				dispatchFormState({
-					type: "set-field-error",
-					field: "preferredArea",
-					error,
+					type: "set-errors",
+					errors,
 				});
 				onValidate?.({
 					scope: "field",
 					field: "preferredArea",
 					value: areaDraftValue,
-					error,
-					isValid: !error,
+					error: errors.preferredArea,
+					isValid: !errors.preferredArea,
 					values: nextValues,
 				});
 			}
@@ -504,7 +536,7 @@ export function AccountForm({
 			setAreaDraftValue(values.preferredArea);
 		}
 		setIsAreaDialogOpen(open);
-	}, [noValidate, areaDraftValue, preferredAreaField, setFieldValue, onValidate, values]);
+	}, [noValidate, areaDraftValue, preferredAreaField, setFieldValue, onValidate, fields, values]);
 
 	const handleDialogAreaChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
 		setAreaDraftValue(event.target.value);
@@ -523,21 +555,20 @@ export function AccountForm({
 			...values,
 			preferredArea: area,
 		};
-		const error = validateField("preferredArea", area, preferredAreaField);
+		const errors = validateField(values, fields, "preferredArea", area, preferredAreaField);
 		dispatchFormState({
-			type: "set-field-error",
-			field: "preferredArea",
-			error,
+			type: "set-errors",
+			errors,
 		});
 		onValidate?.({
 			scope: "field",
 			field: "preferredArea",
 			value: area,
-			error,
-			isValid: !error,
+			error: errors.preferredArea,
+			isValid: !errors.preferredArea,
 			values: nextValues,
 		});
-	}, [noValidate, preferredAreaField, setFieldValue, onValidate, values]);
+	}, [noValidate, preferredAreaField, setFieldValue, onValidate, fields, values]);
 
 	const handleDialogAreaSelect: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
 		event.currentTarget.blur();
