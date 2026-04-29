@@ -59,7 +59,7 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 	/**
 	 * 기본 필드 추가 props
 	 */
-	extraProps?: Partial<form.FieldProps>;
+	extraProps?: Partial<NormalizedFieldOptions>;
 }> = {
 	name: {
 		Component: form.NameField,
@@ -212,16 +212,20 @@ function normalizeFieldOptions(options: AccountFormFieldOptions) {
 	for (const field of FIELD_KEYS) {
 		const option = options[field];
 
+		const extraProps = field in BASE_FIELD_CONFIGS ? BASE_FIELD_CONFIGS[field as BaseFieldKey].extraProps : undefined;
+
 		if (option === true) {
 			normalizedOptions[field] = {
 				enabled: true,
+				...extraProps,
 				defaultValue: "",
 			};
 		} else if (option) {
 			normalizedOptions[field] = {
 				...option,
+				...extraProps,
 				defaultValue: option.defaultValue ?? "",
-				enabled: option.enabled ?? true
+				enabled: option.enabled ?? true,
 			} as NormalizedAccountFormFieldOptions[typeof field];
 		}
 	}
@@ -327,11 +331,10 @@ function validateForm(
 function validateField<F extends FieldKey>(
 	field: F,
 	value: string,
-	option?: NormalizedAccountFormFieldOptions[F],
+	option: NormalizedAccountFormFieldOptions[F] = {},
 ): string | undefined {
 	if (
-		!option
-		|| option.enabled !== true
+		option.enabled !== true
 		|| (option.required === false && value === "")
 		|| option.formNoValidate
 	) return undefined;
@@ -409,6 +412,11 @@ export function AccountForm({
 		setFieldValue(field, value);
 
 		if (noValidate) return;
+
+		const nextValues = {
+			...values,
+			[field]: value,
+		};
 		const error = validateField(field, value, fields[field]);
 		dispatchFormState({
 			type: "set-field-error",
@@ -421,10 +429,7 @@ export function AccountForm({
 			value,
 			error,
 			isValid: !error,
-			values: {
-				...values,
-				[field]: value,
-			},
+			values: nextValues,
 		});
 
 		if (!error) {
@@ -442,6 +447,11 @@ export function AccountForm({
 		setFieldValue(field, "");
 
 		if (noValidate) return;
+
+		const nextValues = {
+			...values,
+			[field]: "",
+		};
 		const error = validateField(field, "", fields[field]);
 		dispatchFormState({
 			type: "set-field-error",
@@ -454,10 +464,7 @@ export function AccountForm({
 			value: "",
 			error,
 			isValid: !error,
-			values: {
-				...values,
-				[field]: "",
-			},
+			values: nextValues,
 		});
 
 		cb?.(event, node);
@@ -473,6 +480,10 @@ export function AccountForm({
 		if (!open) {
 			setFieldValue("preferredArea", areaDraftValue);
 			if (!noValidate) {
+				const nextValues = {
+					...values,
+					preferredArea: areaDraftValue,
+				};
 				const error = validateField("preferredArea", areaDraftValue, preferredAreaField);
 				dispatchFormState({
 					type: "set-field-error",
@@ -485,10 +496,7 @@ export function AccountForm({
 					value: areaDraftValue,
 					error,
 					isValid: !error,
-					values: {
-						...values,
-						preferredArea: areaDraftValue,
-					},
+					values: nextValues,
 				});
 			}
 			setAreaDraftValue("");
@@ -511,6 +519,10 @@ export function AccountForm({
 		setFieldValue("preferredArea", area);
 
 		if (noValidate) return;
+		const nextValues = {
+			...values,
+			preferredArea: area,
+		};
 		const error = validateField("preferredArea", area, preferredAreaField);
 		dispatchFormState({
 			type: "set-field-error",
@@ -523,10 +535,7 @@ export function AccountForm({
 			value: area,
 			error,
 			isValid: !error,
-			values: {
-				...values,
-				preferredArea: area,
-			},
+			values: nextValues,
 		});
 	}, [noValidate, preferredAreaField, setFieldValue, onValidate, values]);
 
@@ -563,7 +572,7 @@ export function AccountForm({
 		const fieldOption = fields[fieldKey];
 		if (!fieldOption || fieldOption.enabled !== true) return null;
 
-		const { Component, extraProps } = BASE_FIELD_CONFIGS[fieldKey];
+		const { Component } = BASE_FIELD_CONFIGS[fieldKey];
 		const {
 			onBlur,
 			onClear,
@@ -580,7 +589,6 @@ export function AccountForm({
 				onBlur={e => handleInputChangeAndBlur(e, onBlur)}
 				onChange={e => handleInputChangeAndBlur(e, onChange)}
 				onClear={fieldOption.readOnly || fieldOption.disabled ? undefined : (...args) => handleInputClear(...args, onClear)}
-				{...extraProps}
 				{...renderableFieldOption}
 				defaultValue={undefined}
 			/>
