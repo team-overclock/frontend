@@ -362,8 +362,9 @@ function validateField<F extends FieldKey>(
 		|| option.formNoValidate
 	) return nextErrors;
 
+	let msg: string | undefined;
 	if (option.validator) {
-		nextErrors[field] = option.validator(values, value);
+		msg = option.validator(values, value);
 	} else {
 		const key = (
 			field.includes("Password")
@@ -372,8 +373,10 @@ function validateField<F extends FieldKey>(
 					? "area"
 					: field
 		) as keyof typeof schema;
-		nextErrors[field] = schema[key].safeParse(value).error?.issues[0]?.message;
+		msg = schema[key].safeParse(value).error?.issues[0]?.message;
 	}
+	if (msg) nextErrors[field] = msg;
+	else delete nextErrors[field];
 
 	for (const nextField of option.nextFields ?? []) {
 		const nextValue =  values[nextField].trim();
