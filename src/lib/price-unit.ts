@@ -15,12 +15,12 @@ import { PRICE_UNITS, type PriceUnit } from "@/shared/enum";
  */
 export function convertToNumber(value: string) {
 	if (!PRICE_UNITS.some(unit => value.endsWith(unit))) {
-		throw new Error("지원하지 않는 단위입니다.");
+		throw new Error("지원하지 않는 단위예요");
 	}
 
 	const numericValue = parseFloat(value);
 	if (Number.isNaN(numericValue)) {
-		throw new Error("유효한 숫자가 아닙니다.");
+		throw new Error("유효한 숫자가 아니에요");
 	}
 
 	if (value.endsWith("억 원")) {

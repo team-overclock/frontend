@@ -91,7 +91,7 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 			label: "새 비밀번호 확인",
 			validator: ({ newPassword }, value) => {
 				if (value !== newPassword) {
-					return "비밀번호가 일치하지 않습니다.";
+					return "새 비밀번호와 일치하지 않아요";
 				}
 			},
 		},

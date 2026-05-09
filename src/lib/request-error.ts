@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ZodError } from "zod";
+import z from "zod";
 
 
 
@@ -7,12 +7,12 @@ import { ZodError } from "zod";
  * API 요청 실패 에러를 사용자 표시용 문자열로 변환
  */
 export function getRequestErrorMessage(error: unknown) {
-	if (error instanceof ZodError) {
+	if (error instanceof z.ZodError) {
 		return "서버 응답 형식이 올바르지 않아요. 백엔드 주소/포트 또는 응답 스키마를 확인해 주세요.";
 	}
 
 	if (!axios.isAxiosError(error)) {
-		return error instanceof Error ? error.message : "요청 처리 중 오류가 발생했어요.";
+		return error instanceof Error ? error.message : "요청 처리 중 오류가 발생했어요";
 	}
 
 	const responseData = error.response?.data;
@@ -54,5 +54,5 @@ export function getRequestErrorMessage(error: unknown) {
 		return responseData.message;
 	}
 
-	return "요청 처리 중 오류가 발생했어요.";
+	return "요청 처리 중 오류가 발생했어요";
 }

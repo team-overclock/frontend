@@ -183,10 +183,10 @@ export function SettingsPage() {
 		if (!newPassword && !newPasswordConfirm) {
 			return;
 		} else if (!currentPassword) {
-			setCurrentPasswordMessage("현재 비밀번호를 입력해주세요.");
+			setCurrentPasswordMessage("현재 비밀번호를 입력해주세요");
 			return;
 		} else if (newPassword !== newPasswordConfirm) {
-			setPasswordConfirmMessage("비밀번호가 일치하지 않아요.");
+			setPasswordConfirmMessage("비밀번호가 일치하지 않아요");
 			return;
 		}
 

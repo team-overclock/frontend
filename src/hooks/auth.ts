@@ -1,12 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getSession, signIn, signUp, updatePassword, updateProfileInfo } from "@/lib/api";
-import type {
-	SignInInput,
-	SignUpInput,
-	UpdatePasswordInput,
-	UpdateProfileInfoInput,
-} from "@/shared/schema";
 
 
 
@@ -34,7 +28,7 @@ export function useSessionQuery() {
  */
 export function useSignUpMutation() {
 	return useMutation({
-		mutationFn: (input: SignUpInput) => signUp(input),
+		mutationFn: signUp,
 	});
 }
 
@@ -47,7 +41,7 @@ export function useSignInMutation() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (input: SignInInput) => signIn(input),
+		mutationFn: signIn,
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: authQueryKeys.session });
 		},
@@ -61,7 +55,7 @@ export function useUpdateProfileInfoMutation() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (input: UpdateProfileInfoInput) => updateProfileInfo(input),
+		mutationFn: updateProfileInfo,
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: authQueryKeys.session });
 		},
@@ -73,6 +67,6 @@ export function useUpdateProfileInfoMutation() {
  */
 export function useUpdatePasswordMutation() {
 	return useMutation({
-		mutationFn: (input: UpdatePasswordInput) => updatePassword(input),
+		mutationFn: updatePassword,
 	});
 }
