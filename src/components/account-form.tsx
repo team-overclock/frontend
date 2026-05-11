@@ -3,7 +3,7 @@ import { useRef, useCallback, useMemo, useReducer, useState } from "react";
 import { AREAS } from "@/shared/enum";
 import * as schema from "@/shared/schema";
 import { cn } from "@/lib/utils";
-import { filterStringList } from "@/lib/filter-string-list";
+import { filterList } from "@/lib/filter-string-list";
 
 import {
 	Dialog,
@@ -436,7 +436,7 @@ export function AccountForm({
 	}, []);
 
 	const filteredAreaList = useMemo(
-		() => filterStringList(AREAS, isAreaDialogMode ? areaDraftValue : values.preferredArea),
+		() => filterList(AREAS, isAreaDialogMode ? areaDraftValue : values.preferredArea),
 		[areaDraftValue, isAreaDialogMode, values.preferredArea],
 	);
 

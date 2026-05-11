@@ -2,7 +2,7 @@ import { disassemble, getChoseong, convertHangulToQwerty } from "es-hangul";
 
 
 
-export interface FilterStringListOptions {
+export interface FilterListOptions<T> {
 	/**
 	 * 대소문자 구분 여부
 	 *
@@ -33,23 +33,29 @@ export interface FilterStringListOptions {
 	 * 한글-쿼티 매칭 여부
 	 */
 	enableQwertyHangulMatching?: boolean;
+
+	/**
+	 * 목록의 각 항목에서 문자열을 추출하는 함수
+	 */
+	getString?: (item: T) => string;
 }
 
 /**
  * 문자열을 검색하기 위한 형태로 변환하는 함수
  */
-export function filterStringListOptionsToObject(value: string, {
+export function filterListOptionsToObject(value: string, {
 	caseSensitive = false,
 	enableHangulDecomposition = true,
 	enableHangulChoseongMatching = true,
 	enableQwertyHangulMatching = true,
-}: Omit<FilterStringListOptions, "matchAll"> = {}) {
+}: Omit<FilterListOptions<unknown>, "matchAll" | "getString"> = {}) {
 	value = value.trim()
 	const data: {
 		normalized: string;
 		decomposed?: string;
 		choseong?: string;
 		qwerty?: string;
+		qwertyChoseong?: string;
 	} = {
 		normalized: caseSensitive ? value : value.toLowerCase(),
 	};
@@ -57,16 +63,22 @@ export function filterStringListOptionsToObject(value: string, {
 	if (enableHangulDecomposition) data.decomposed = disassemble(value);
 	if (enableHangulChoseongMatching) data.choseong = getChoseong(value);
 	if (enableQwertyHangulMatching) data.qwerty = convertHangulToQwerty(value);
+	if (enableHangulChoseongMatching && enableQwertyHangulMatching) data.qwertyChoseong = convertHangulToQwerty(data.choseong!);
 	return data;
 }
 
 /**
  * 문자열 검색 함수
  */
-export function filterStringList(items: readonly string[], query: string, {
-	matchAll = true,
-	...options
-}: FilterStringListOptions = {}) {
+export function filterList<T>(
+	items: readonly T[],
+	query: string,
+	{
+		matchAll = true,
+		getString,
+		...options
+	}: FilterListOptions<T> = {},
+) {
 	/*
 	 * 한 단어에서 음절 + 초성 동시 검색 안 됨
 	 *
@@ -78,7 +90,7 @@ export function filterStringList(items: readonly string[], query: string, {
 
 	const terms = query
 		.split(/\s+/)
-		.map(x => filterStringListOptionsToObject(x, options))
+		.map(x => filterListOptionsToObject(x, options))
 		.filter(x => x.normalized);
 
 	if (terms.length === 0) {
@@ -86,12 +98,14 @@ export function filterStringList(items: readonly string[], query: string, {
 	}
 
 	return items.filter((item) => {
+		const str = getString?.(item) ?? String(item);
 		const {
 			normalized,
 			decomposed,
 			choseong,
 			qwerty,
-		} = filterStringListOptionsToObject(item, options);
+			qwertyChoseong,
+		} = filterListOptionsToObject(str, options);
 
 		const everyOrSome = matchAll ? "every" : "some";
 		return terms[everyOrSome]((term) => (
@@ -99,6 +113,7 @@ export function filterStringList(items: readonly string[], query: string, {
 			|| (term.decomposed && decomposed?.includes(term.decomposed))
 			|| (term.choseong && term.normalized === term.choseong && choseong?.includes(term.choseong))
 			|| (term.qwerty && qwerty?.includes(term.qwerty))
+			|| (term.qwerty && qwertyChoseong?.includes(term.qwerty))
 		));
 	});
 }

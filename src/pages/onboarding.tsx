@@ -8,7 +8,7 @@ import type { InfraItem, InfraTitle, PriceUnit } from "@/shared/enum";
 import { ROUTES } from "@/shared/routes";
 import * as schema from "@/shared/schema";
 import { submitOnboarding } from "@/lib/api";
-import { filterStringList } from "@/lib/filter-string-list";
+import { filterList } from "@/lib/filter-string-list";
 import { getRequestErrorMessage } from "@/lib/request-error";
 import { useAuthStore } from "@/stores/auth";
 import {
@@ -647,7 +647,7 @@ export function OnboardingPage() {
 	);
 
 	const filteredAreaList = useMemo(
-		() => filterStringList(AREAS, selectedArea),
+		() => filterList(AREAS, selectedArea),
 		[selectedArea],
 	);
 
