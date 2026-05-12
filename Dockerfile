@@ -28,13 +28,13 @@ RUN npm install -g corepack && corepack enable
 FROM base-pnpm AS prod-deps
 
 # 운영용: 종속성 설치
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-*.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # 운영용: 빌드
 FROM base-pnpm AS prod-build
 COPY --from=prod-deps /app/node_modules /app/node_modules
-COPY ./.env package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml ./
 COPY tsconfig*.json vite.config.ts index.html ./
 COPY src ./src
 RUN pnpm run build
