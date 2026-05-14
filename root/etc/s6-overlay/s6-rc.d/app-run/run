@@ -4,7 +4,7 @@ cd /app
 
 echo "**** Starting app ****"
 
-if [ "$NODE_ENV" != "production" ]; then
+if [ "$MODE" != "production" ]; then
 	exec s6-setuidgid abc pnpm run dev --host 0.0.0.0
 else
 	exec s6-setuidgid abc npm run start

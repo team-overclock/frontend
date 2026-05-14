@@ -41,7 +41,7 @@ RUN pnpm run build
 
 # 운영용: 메인
 FROM base-node AS prod
-ENV NODE_ENV=production
+ENV MODE=production
 COPY --from=prod-build /app/dist ./dist
 COPY package.json ./
 RUN npm install -g serve
@@ -50,4 +50,4 @@ RUN npm install -g serve
 
 # 개발용 이미지
 FROM base-pnpm AS dev
-ENV NODE_ENV=development
+ENV MODE=development
