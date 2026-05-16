@@ -3,19 +3,22 @@ import { useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { cn } from "@/lib/utils";
 import { convertToNumber } from "@/lib/price-unit";
-import { AREAS, INFRA_ITEMS, PRICE_UNITS, PRICE_KEYS } from "@/shared/enum";
-import type { InfraItem, InfraTitle, PriceUnit } from "@/shared/enum";
+import { PRICE_UNITS } from "@/shared/enum";
+import type { PriceUnit } from "@/shared/enum";
 import { ROUTES } from "@/shared/routes";
 import * as schema from "@/shared/schema";
-import { submitOnboarding } from "@/lib/api";
+import { createRecommendation } from "@/lib/api";
+import { useRegionsStore, useInfraTypesStore } from "@/stores/items";
 import { filterList } from "@/lib/filter-string-list";
 import { getRequestErrorMessage } from "@/lib/request-error";
 import { useAuthStore } from "@/stores/auth";
+import { getInfraInfo, type InfraInfo } from "@/shared/common";
 import {
 	useOnboardingStore,
 	type OnboardingPriceKey,
 	type OnboardingPriceSelection,
 	type OnboardingPriceState,
+	type OnboardingPayload,
 } from "@/stores/onboarding";
 
 import {
@@ -54,13 +57,13 @@ const DEFAULT_PRICE_SLIDER_OPTIONS: PriceSliderOptions = {
  */
 const PRICE_ITEMS: readonly PriceItem[] = [
 	{
-		key: "purchase",
+		key: "sale",
 		icon: "🏠",
 		label: "매매",
 		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
 	},
 	{
-		key: "jeonse",
+		key: "deposit",
 		icon: "💸",
 		label: "전세",
 		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
@@ -75,13 +78,13 @@ const SECTION_OPTIONS: SectionOptions[] = [
 		heading: "선호하는 동네를 선택해 주세요",
 		description: "가입 시 선택한 동네는 변경되지 않아요!",
 		validate: (ctx) => {
-			const parsed = schema.area.safeParse(ctx.selectedArea);
-			return parsed.success ? undefined : parsed.error.issues[0]?.message;
+			const parsed = schema.region.safeParse(ctx.selectedRegion.name);
+			return parsed.success ? undefined : parsed.error.issues[0].message;
 		},
 		renderOverview: ctx => (
-			<form.AreaField
-				name="overviewArea"
-				value={ctx.overviewArea}
+			<form.RegionField
+				name="overviewRegion"
+				value={ctx.overviewRegion.name}
 				className="group-data-[invalid=true]:*:data-[slot=input-group]:border-destructive"
 				tabIndex={-1}
 				readOnly
@@ -89,19 +92,19 @@ const SECTION_OPTIONS: SectionOptions[] = [
 		),
 		renderChildren: ctx => (
 			<div>
-				<form.AreaField
-					name="preferredArea"
-					value={ctx.selectedArea}
-					onChange={ctx.handleAreaInputChange}
-					onClear={ctx.handleAreaInputClear}
+				<form.RegionField
+					name="region"
+					value={ctx.selectedRegion.name}
+					onChange={ctx.handleRegionInputChange}
+					onClear={ctx.handleRegionInputClear}
 					defaultValue={undefined}
 				/>
-				<form.AreaListPanel
+				<form.RegionListPanel
 					className="mt-2"
-					items={ctx.filteredAreaList}
-					onSelect={ctx.handleAreaItemClick}
+					items={ctx.filteredRegionList}
+					onSelect={ctx.handleRegionItemClick}
 					style={{
-						"--area-listbox-height": "230px",
+						"--region-listbox-height": "230px",
 					} as React.CSSProperties}
 				/>
 			</div>
@@ -110,14 +113,14 @@ const SECTION_OPTIONS: SectionOptions[] = [
 	{
 		heading: "🏗️ 생활 인프라 (1개 이상)",
 		description: "선택한 순서대로 우선순위가 정해져요!",
-		validate: ctx => (ctx.selectedInfraTitles.length ? undefined : "인프라를 1개 이상 선택해 주세요!"),
+		validate: ctx => (ctx.numberOfSelectedInfra ? undefined : "인프라를 1개 이상 선택해 주세요!"),
 		renderOverview: ctx => (
 			<div className="rounded-2xl border bg-secondary p-4 shadow-md space-y-3 transition-colors group-data-[invalid=true]:border-destructive">
 				<h3 className="text-sm font-bold">인프라 우선순위</h3>
 				<ol className="rounded-xl flex flex-wrap gap-2 justify-center-safe">
-					{ctx.selectedItems.map(({ icon, title, color }, idx) => (
+					{ctx.infraStateItems.filter(x => x.order).sort((a, b) => a.order! - b.order!).map(({ icon, typeName, color }, idx) => (
 						<li
-							key={title}
+							key={typeName}
 							className="flex justify-center-safe rounded-xl border border-(--c) bg-(--c)/5 px-3 py-2 text-sm font-medium"
 							style={{
 								"--c": color,
@@ -127,10 +130,10 @@ const SECTION_OPTIONS: SectionOptions[] = [
 								className="inline-flex justify-center items-center size-6 rounded-full bg-(--c) mr-1 text-white"
 								children={idx + 1}
 							/>
-							<span>{icon} {title}</span>
+							<span>{icon} {typeName}</span>
 						</li>
 					))}
-					{!ctx.selectedItems.length && (
+					{!ctx.numberOfSelectedInfra && (
 						<li
 							className="text-sm text-muted-foreground"
 							children="아직 인프라를 선택하지 않았어요!"
@@ -141,13 +144,16 @@ const SECTION_OPTIONS: SectionOptions[] = [
 		),
 		renderChildren: ctx => (
 			<div className="grid grid-cols-2 gap-4">
-				{INFRA_ITEMS.map(infra => (
+				{ctx.infraStateItems.map(infra => (
 					<Card
-						{...infra}
-						key={infra.title}
-						order={ctx.selectedOrderMap.get(infra.title)}
-						checked={ctx.selectedTitleSet.has(infra.title)}
-						onCheckChange={checked => ctx.handleCardToggle(infra.title, checked)}
+						key={infra.typeName}
+						icon={infra.icon}
+						typeName={infra.typeName}
+						description={infra.description}
+						color={infra.color}
+						order={infra.order}
+						checked={!!infra.order}
+						onCheckChange={checked => ctx.handleCardToggle(infra.typeName, checked)}
 					/>
 				))}
 			</div>
@@ -271,6 +277,13 @@ const SECTION_OPTIONS: SectionOptions[] = [
 
 
 /**
+ * 인프라 백엔드에서 받아온 정보와 공통 정보 스키마를 합친 타입
+ */
+interface InfraInfoItem extends InfraInfo {
+	order?: number;
+}
+
+/**
  * 가격 조건 컨트롤용 슬라이더 옵션
  */
 interface PriceSliderOptions extends Pick<OnboardingPriceSelection, "unit"> {
@@ -297,10 +310,7 @@ type PriceRange = [number, number];
 /**
  * 온보딩 폼 상태 타입
  */
-interface OnboardingFormState {
-	preferredArea: string;
-	infraTitles: InfraTitle[];
-	priceState: OnboardingPriceState;
+interface OnboardingFormState extends Required<OnboardingPayload> {
 }
 
 /**
@@ -314,17 +324,15 @@ interface LocationState {
  * 섹션 렌더링에 필요한 컨텍스트 타입
  */
 interface SectionRenderContext {
-	selectedArea: string;
-	overviewArea: string;
-	filteredAreaList: string[];
-	handleAreaInputChange: React.ChangeEventHandler<HTMLInputElement>;
-	handleAreaInputClear: Exclude<form.FieldProps["onClear"], undefined>;
-	handleAreaItemClick: form.AreaListPanelProps["onSelect"];
-	selectedInfraTitles: InfraTitle[];
-	selectedItems: InfraItem[];
-	selectedTitleSet: Set<InfraTitle>;
-	selectedOrderMap: Map<InfraTitle, number>;
-	handleCardToggle: (title: InfraTitle, checked: boolean) => void;
+	selectedRegion: schema.Item;
+	overviewRegion: schema.Item;
+	filteredRegionList: schema.Item[];
+	infraStateItems: InfraInfoItem[];
+	numberOfSelectedInfra: number;
+	handleRegionInputChange: React.ChangeEventHandler<HTMLInputElement>;
+	handleRegionInputClear: Exclude<form.FieldProps["onClear"], undefined>;
+	handleRegionItemClick: form.RegionListPanelProps["onSelect"];
+	handleCardToggle: (typeName: string, checked: boolean) => void;
 	priceItems: Array<PriceItem & OnboardingPriceSelection & {
 		setEnabled: (checked: boolean) => void;
 		setRange: (range: PriceRange) => void;
@@ -346,25 +354,28 @@ interface SectionOptions {
 
 
 /**
- * 인프라 매핑 객체
- */
-const INFRA_BY_TITLE = new Map(INFRA_ITEMS.map(infra => [infra.title, infra] as const));
-
-/**
  * @returns 가격 상태 기본값
  */
 const createInitialOnboardingPriceState = (): OnboardingPriceState => ({
-	purchase: {
+	sale: {
 		enabled: false,
 		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
 		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
 	},
-	jeonse: {
+	deposit: {
 		enabled: false,
 		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
 		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
 	},
 });
+
+function priceStateToRequestSchema(state: OnboardingPriceSelection) {
+	if (!state.enabled) return null;
+	return {
+		min: convertToNumber(`${state.range[0]}${state.unit}`),
+		max: convertToNumber(`${state.range[1]}${state.unit}`),
+	};
+}
 
 /**
  * 숫자를 지정된 구간으로 보정하는 함수
@@ -380,13 +391,13 @@ function clonePriceState(source?: OnboardingPriceState): OnboardingPriceState {
 	const state = source ?? createInitialOnboardingPriceState();
 
 	return {
-		purchase: {
-			...state.purchase,
-			range: [...state.purchase.range] as PriceRange,
+		sale: {
+			...state.sale,
+			range: [...state.sale.range] as PriceRange,
 		},
-		jeonse: {
-			...state.jeonse,
-			range: [...state.jeonse.range] as PriceRange,
+		deposit: {
+			...state.deposit,
+			range: [...state.deposit.range] as PriceRange,
 		},
 	};
 }
@@ -394,14 +405,14 @@ function clonePriceState(source?: OnboardingPriceState): OnboardingPriceState {
 /**
  * 온보딩 폼 상태를 안전하게 생성하는 함수
  */
-function createOnboardingFormState (
-	preferredArea?: string,
-	infraTitles?: InfraTitle[],
+function createOnboardingFormState(
+	region?: schema.Item,
+	infraTypes?: schema.Item[],
 	priceState?: OnboardingPriceState,
 ): OnboardingFormState {
 	return {
-		preferredArea: preferredArea ?? "",
-		infraTitles: [...(infraTitles ?? [])],
+		region: region ?? { id: 0, name: "" },
+		infraTypes: [...(infraTypes ?? [])],
 		priceState: clonePriceState(priceState),
 	};
 }
@@ -439,7 +450,7 @@ function isOnboardingLocationState(state: unknown): state is LocationState {
 /**
  * 인프라 카드 컴포넌트 props 타입
  */
-interface CardProps extends InfraItem {
+interface CardProps extends InfraInfo {
 	order?: number;
 	checked: boolean;
 	onCheckChange: (check: boolean) => void;
@@ -450,7 +461,7 @@ interface CardProps extends InfraItem {
  */
 function Card({
 	icon,
-	title,
+	typeName,
 	description,
 	color,
 	order,
@@ -462,7 +473,7 @@ function Card({
 			type="button"
 			role="checkbox"
 			aria-checked={checked}
-			aria-label={title}
+			aria-label={typeName}
 			onClick={() => onCheckChange(!checked)}
 			className={cn(
 				"relative transition-colors border-2 rounded-2xl shadow-md",
@@ -476,7 +487,7 @@ function Card({
 				children={order}
 			/>
 			<div className="text-3xl">{icon}</div>
-			<h3 className="font-semibold">{title}</h3>
+			<h3 className="font-semibold">{typeName}</h3>
 			<p className="text-sm text-muted-foreground">{description}</p>
 		</button>
 	);
@@ -489,14 +500,23 @@ function Card({
  */
 export function OnboardingPage() {
 	const formId = "onboarding-form";
-	const { preferredArea: defaultArea } = useAuthStore();
+	const { regionName: defaultRegionName } = useAuthStore();
+	const regionsStore = useRegionsStore();
+	const infraTypesStore = useInfraTypesStore();
+
+	const regionItems = regionsStore.items;
+	const regionMap = regionsStore.getMap();
+	const infraTypesItems = infraTypesStore.items;
+	const infraTypesMap = infraTypesStore.getMap();
 	const {
-		preferredArea: storedPreferredArea = defaultArea,
-		infraTitles: storedInfraTitles = [],
+		region: storedRegion = regionMap.get(defaultRegionName ?? ""),
+		infraTypes: storedInfraTypes = [],
 		priceState: storedPriceState = createInitialOnboardingPriceState(),
 		set: setOnboarding,
 		reset: resetOnboarding,
 	} = useOnboardingStore();
+
+	// const infraInfoItems = infraTypesItems.map(({ name }) => getInfraInfo(name));
 
 	/**
 	 * 편집 종료 후 포커스를 되돌릴 섹션 인덱스 ref
@@ -515,24 +535,52 @@ export function OnboardingPage() {
 	const [editorErrorMessages, setEditorErrorMessages] = useState<string[]>([]);
 	const [requestErrorMessage, setRequestErrorMessage] = useState("");
 
-	const [committedState, setCommittedState] = useState<OnboardingFormState>(() => createOnboardingFormState(
-		storedPreferredArea,
-		storedInfraTitles,
+	const [committedState, setCommittedState] = useState<OnboardingFormState>(createOnboardingFormState(
+		storedRegion,
+		storedInfraTypes,
 		storedPriceState,
 	));
-	const [draftState, setDraftState] = useState<OnboardingFormState>(() => createOnboardingFormState(
-		storedPreferredArea,
-		storedInfraTitles,
+	const [draftState, setDraftState] = useState<OnboardingFormState>(createOnboardingFormState(
+		storedRegion,
+		storedInfraTypes,
 		storedPriceState,
 	));
+
+	useEffect(() => {
+		regionsStore.fetch();
+	}, [regionsStore]);
+
+	useEffect(() => {
+		infraTypesStore.fetch();
+	}, [infraTypesStore]);
+
+	useEffect(() => {
+		if (!storedRegion) return;
+
+		if (
+			committedState.region?.id === storedRegion.id
+			&& committedState.region?.name === storedRegion.name
+			&& committedState.infraTypes.length === storedInfraTypes.length
+		) return;
+
+		const next = createOnboardingFormState(storedRegion, storedInfraTypes, storedPriceState);
+		setCommittedState(next);
+		setDraftState(createOnboardingFormState(next.region, next.infraTypes, next.priceState));
+	}, [storedRegion, storedInfraTypes, storedPriceState, committedState]);
+
+	const getRegionItem = useCallback(
+		(name: string) => regionMap.get(name) ?? { id: 0, name },
+		[regionMap],
+	);
+
 	const currSection = useMemo(
 		() => parseSectionFromSearchParam(searchParams.get("edit")),
 		[searchParams],
 	);
 
 	const isEditing = currSection >= 0;
-	const selectedArea = isEditing ? draftState.preferredArea : committedState.preferredArea;
-	const selectedInfraTitles = isEditing ? draftState.infraTitles : committedState.infraTitles;
+	const selectedRegion = isEditing ? draftState.region : committedState.region;
+	const selectedInfraTypes = isEditing ? draftState.infraTypes : committedState.infraTypes;
 	const selectedPriceState = isEditing ? draftState.priceState : committedState.priceState;
 
 	const openEditor = useCallback((nextSection: number) => {
@@ -636,76 +684,82 @@ export function OnboardingPage() {
 		});
 	}, [selectedPriceState, setDraftPriceEnabled, setDraftPriceRange, setDraftPriceUnit]);
 
-	const selectedTitleSet = useMemo(() => new Set(selectedInfraTitles), [selectedInfraTitles]);
-	const selectedOrderMap = useMemo(
-		() => new Map(selectedInfraTitles.map((title, idx) => [title, idx + 1] as const)),
-		[selectedInfraTitles],
-	);
-	const selectedItems = useMemo(
-		() => selectedInfraTitles.map(title => INFRA_BY_TITLE.get(title)).filter((item): item is InfraItem => !!item),
-		[selectedInfraTitles],
-	);
-
-	const filteredAreaList = useMemo(
-		() => filterList(AREAS, selectedArea),
-		[selectedArea],
+	const filteredRegionList = useMemo(
+		() => filterList(
+			regionItems,
+			selectedRegion.name,
+			{ getString: region => region.name },
+		),
+		[selectedRegion, regionItems],
 	);
 
-	const handleCardToggle = useCallback<SectionRenderContext["handleCardToggle"]>((title) => {
-		updateDraft(prev => ({
-			...prev,
-			infraTitles: prev.infraTitles.includes(title)
-				? prev.infraTitles.filter(value => value !== title)
-				: [...prev.infraTitles, title],
-		}));
-	}, [updateDraft]);
+	const infraStateItems = useMemo(() => {
+		return infraTypesItems.map(infra => {
+			const info = getInfraInfo(infra.name);
+			const infraTypeId = infraTypesMap.get(infra.name)!.id;
+			const order = selectedInfraTypes.findIndex(selected => selected.id === infra.id);
+			return {
+				...infra,
+				...info,
+				id: infraTypeId,
+				order: order >= 0 ? order + 1 : undefined,
+			};
+		});
+	}, [infraTypesItems, infraTypesMap, selectedInfraTypes]);
 
-	const handleAreaInputChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>((event) => {
+	const handleCardToggle = useCallback<SectionRenderContext["handleCardToggle"]>((typeName, checked) => {
+		updateDraft(prev => {
+			return {
+				...prev,
+				infraTypes: !checked
+					? prev.infraTypes.filter(value => value.name !== typeName)
+					: [...prev.infraTypes, infraTypesMap.get(typeName)!],
+			};
+		});
+	}, [updateDraft, infraTypesMap]);
+
+	const handleRegionInputChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>((event) => {
 		const nextValue = event.target.value;
-		updateDraft(prev => ({ ...prev, preferredArea: nextValue }));
-	}, [updateDraft]);
+		updateDraft(prev => ({ ...prev, region: getRegionItem(nextValue) }));
+	}, [updateDraft, getRegionItem]);
 
-	const handleAreaInputClear = useCallback<React.MouseEventHandler<HTMLButtonElement>>(() => {
-		updateDraft(prev => ({ ...prev, preferredArea: "" }));
-	}, [updateDraft]);
+	const handleRegionInputClear = useCallback<React.MouseEventHandler<HTMLButtonElement>>(() => {
+		updateDraft(prev => ({ ...prev, region: getRegionItem("") }));
+	}, [updateDraft, getRegionItem]);
 
-	const handleAreaItemClick = useCallback<form.AreaListPanelProps["onSelect"]>((event, area) => {
+	const handleRegionItemClick = useCallback<form.RegionListPanelProps["onSelect"]>((event, region) => {
 		event.currentTarget.blur();
-		updateDraft(prev => ({ ...prev, preferredArea: area }));
+		updateDraft(prev => ({ ...prev, region }));
 	}, [updateDraft]);
 
 	const sectionContext = useMemo<SectionRenderContext>(() => ({
-		selectedArea,
-		overviewArea: committedState.preferredArea,
-		filteredAreaList,
-		handleAreaInputChange,
-		handleAreaInputClear,
-		handleAreaItemClick,
-		selectedInfraTitles,
-		selectedItems,
-		selectedTitleSet,
-		selectedOrderMap,
+		infraStateItems,
+		selectedRegion,
+		overviewRegion: committedState.region,
+		filteredRegionList,
+		numberOfSelectedInfra: selectedInfraTypes.length,
+		handleRegionInputChange,
+		handleRegionInputClear,
+		handleRegionItemClick,
 		handleCardToggle,
 		priceItems: priceItemsWithState,
 	}), [
-		selectedArea,
-		committedState.preferredArea,
-		filteredAreaList,
-		handleAreaInputChange,
-		handleAreaInputClear,
-		handleAreaItemClick,
-		selectedInfraTitles,
-		selectedItems,
-		selectedTitleSet,
-		selectedOrderMap,
+		infraStateItems,
+		selectedRegion,
+		committedState.region,
+		filteredRegionList,
+		selectedInfraTypes,
+		handleRegionInputChange,
+		handleRegionInputClear,
+		handleRegionItemClick,
 		handleCardToggle,
 		priceItemsWithState,
 	]);
 
 	const handleEditClick = useCallback((idx: number) => {
 		setDraftState(createOnboardingFormState(
-			committedState.preferredArea,
-			committedState.infraTitles,
+			committedState.region,
+			committedState.infraTypes,
 			committedState.priceState,
 		));
 		openEditor(idx);
@@ -716,8 +770,8 @@ export function OnboardingPage() {
 
 		pendingFocusSectionRef.current = currSection;
 		setDraftState(createOnboardingFormState(
-			committedState.preferredArea,
-			committedState.infraTitles,
+			committedState.region,
+			committedState.infraTypes,
 			committedState.priceState,
 		));
 		setEditorErrorMessages(prev => {
@@ -730,7 +784,7 @@ export function OnboardingPage() {
 
 	const handleResetClick = useCallback(() => {
 		const initialState = createOnboardingFormState(
-			defaultArea,
+			getRegionItem(defaultRegionName ?? ""),
 			[],
 			createInitialOnboardingPriceState(),
 		);
@@ -738,15 +792,15 @@ export function OnboardingPage() {
 		resetOnboarding();
 		setCommittedState(initialState);
 		setDraftState(createOnboardingFormState(
-			initialState.preferredArea,
-			initialState.infraTitles,
+			initialState.region,
+			initialState.infraTypes,
 			initialState.priceState,
 		));
 		setOverviewErrorMessages([]);
 		setEditorErrorMessages([]);
 		setRequestErrorMessage("");
 		closeEditor();
-	}, [closeEditor, defaultArea, resetOnboarding]);
+	}, [closeEditor, getRegionItem, defaultRegionName, resetOnboarding]);
 
 	const handleSaveClick = useCallback(() => {
 		if (currSection < 0) return;
@@ -762,15 +816,15 @@ export function OnboardingPage() {
 		}
 
 		const nextCommittedState = createOnboardingFormState(
-			draftState.preferredArea,
-			draftState.infraTitles,
+			draftState.region,
+			draftState.infraTypes,
 			draftState.priceState,
 		);
 
 		setCommittedState(nextCommittedState);
 		setOnboarding({
-			preferredArea: nextCommittedState.preferredArea,
-			infraTitles: nextCommittedState.infraTitles,
+			region: nextCommittedState.region,
+			infraTypes: nextCommittedState.infraTypes,
 			priceState: nextCommittedState.priceState,
 		});
 
@@ -806,29 +860,19 @@ export function OnboardingPage() {
 		setEditorErrorMessages([]);
 
 		try {
-			const response = await submitOnboarding({
-				preferredArea: committedState.preferredArea,
-				infraTitles: committedState.infraTitles,
-				priceState: PRICE_KEYS.reduce((acc, cur) => {
-					const state = committedState.priceState[cur];
-					acc[cur] = {
-						enabled: state.enabled,
-						min: convertToNumber(`${state.range[0]}${state.unit}`),
-						max: convertToNumber(`${state.range[1]}${state.unit}`),
-					};
-					return acc;
-				}, {} as schema.SubmitOnboardingInput["priceState"]),
+			const response = await createRecommendation({
+				regionId: committedState.region.id,
+				infrastructureTypeIds: committedState.infraTypes.map(infra => infra.id),
+				salePrice: priceStateToRequestSchema(committedState.priceState.sale),
+				depositPrice: priceStateToRequestSchema(committedState.priceState.deposit),
 			});
-
-			if (!response.isSuccess) {
-				setRequestErrorMessage("온보딩 요청 처리에 실패했어요.");
-				return;
-			}
 
 			resetOnboarding();
 			navigate({
-				pathname: ROUTES.MAP,
-				search: `?uniqueId=${encodeURIComponent(String(response.uniqueId))}`,
+				pathname: ROUTES.RECOMMENDATION,
+				search: `?task_id=${encodeURIComponent(response.taskId)}`,
+			}, {
+				replace: true,
 			});
 		} catch (error) {
 			setRequestErrorMessage(getRequestErrorMessage(error));

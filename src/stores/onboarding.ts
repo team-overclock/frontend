@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { InfraTitle, PriceKey, PriceUnit } from "@/shared/enum";
+
+import type { PriceKey, PriceUnit } from "@/shared/enum";
+import type * as schema from "@/shared/schema";
 
 
 
@@ -31,9 +33,9 @@ export type OnboardingPriceState = Record<PriceKey, OnboardingPriceSelection>;
 /**
  * 사용자 선호 데이터
  */
-interface OnboardingPayload {
-	preferredArea?: string;
-	infraTitles?: InfraTitle[];
+export interface OnboardingPayload {
+	region?: schema.Item;
+	infraTypes?: schema.Item[];
 	priceState?: OnboardingPriceState;
 }
 
@@ -46,21 +48,21 @@ export interface OnboardingState extends OnboardingPayload {
  * 온보딩 페이지 상태 저장용 세션 스토리지
  */
 export const useOnboardingStore = create<OnboardingState>()(persist(set => ({
-	preferredArea: undefined,
-	infraTitles: undefined,
+	region: undefined,
+	infraTypes: undefined,
 	priceState: undefined,
 	set: ({
-		preferredArea,
-		infraTitles,
+		region,
+		infraTypes,
 		priceState,
 	}) => set({
-		preferredArea,
-		infraTitles,
+		region,
+		infraTypes,
 		priceState,
 	}),
 	reset: () => set({
-		preferredArea: undefined,
-		infraTitles: undefined,
+		region: undefined,
+		infraTypes: undefined,
 		priceState: undefined,
 	}),
 }), {

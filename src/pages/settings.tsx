@@ -1,8 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { CheckCheckIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useUpdatePasswordMutation, useUpdateProfileInfoMutation } from "@/hooks/auth";
+import { ROUTES } from "@/shared/routes";
+import { useLogoutMutation, useUserQuery, useUpdatePasswordMutation, useUpdateProfileInfoMutation } from "@/hooks/auth";
+import { useRegionsStore } from "@/stores/items";
 import { useAuthStore } from "@/stores/auth";
 import { getRequestErrorMessage } from "@/lib/request-error";
 
@@ -75,14 +78,25 @@ function Section({
  * 설정 페이지 컴포넌트
  */
 export function SettingsPage() {
+	const navigate = useNavigate();
+	const logoutMutation = useLogoutMutation();
 	const updateProfileInfoMutation = useUpdateProfileInfoMutation();
 	const updatePasswordMutation = useUpdatePasswordMutation();
+	const regionsStore = useRegionsStore();
+	const { set: setProfile } = useAuthStore();
+	const {
+		data: {
+			user = null,
+		} = {},
+	} = useUserQuery();
+
+	const regionNames = regionsStore.getMap();
+
 	const {
 		name: storedName = "",
 		email: storedEmail = "",
-		preferredArea: storedPreferredArea = "",
-		set: setProfile,
-	} = useAuthStore();
+		regionName: storedRegionName = "",
+	} = user ?? {};
 
 	const [isInfoSuccess, setIsInfoSuccess] = useState(false);
 	const [isPasswordSuccess, setIsPasswordSuccess] = useState(false);
@@ -94,6 +108,51 @@ export function SettingsPage() {
 	const isInfoSubmitting = updateProfileInfoMutation.isPending;
 	const isPasswordSubmitting = updatePasswordMutation.isPending;
 
+	// 성공 표시가 화면에 보이는 시간 (밀리초)
+	const SUCCESS_DISPLAY_MS = 1500;
+	const infoSuccessTimer = useRef<number | null>(null);
+	const passwordSuccessTimer = useRef<number | null>(null);
+
+	useEffect(() => {
+		regionsStore.fetch();
+	}, [regionsStore]);
+
+	useEffect(() => {
+		if (isInfoSuccess) {
+			if (infoSuccessTimer.current) {
+				clearTimeout(infoSuccessTimer.current);
+			}
+			infoSuccessTimer.current = window.setTimeout(() => {
+				setIsInfoSuccess(false);
+				infoSuccessTimer.current = null;
+			}, SUCCESS_DISPLAY_MS);
+		}
+		return () => {
+			if (infoSuccessTimer.current) {
+				clearTimeout(infoSuccessTimer.current);
+				infoSuccessTimer.current = null;
+			}
+		};
+	}, [isInfoSuccess]);
+
+	useEffect(() => {
+		if (isPasswordSuccess) {
+			if (passwordSuccessTimer.current) {
+				clearTimeout(passwordSuccessTimer.current);
+			}
+			passwordSuccessTimer.current = window.setTimeout(() => {
+				setIsPasswordSuccess(false);
+				passwordSuccessTimer.current = null;
+			}, SUCCESS_DISPLAY_MS);
+		}
+		return () => {
+			if (passwordSuccessTimer.current) {
+				clearTimeout(passwordSuccessTimer.current);
+				passwordSuccessTimer.current = null;
+			}
+		};
+	}, [isPasswordSuccess]);
+
 	const infoFields = useMemo<AccountFormFieldOptions>(() => ({
 		name: {
 			defaultValue: storedName,
@@ -102,13 +161,14 @@ export function SettingsPage() {
 		email: {
 			defaultValue: storedEmail,
 			formNoValidate: true,
+			required: false,
 			disabled: true,
 		},
-		preferredArea: {
-			defaultValue: storedPreferredArea,
+		region: {
+			defaultValue: storedRegionName ?? "",
 			required: false,
 		},
-	}), [storedName, storedEmail, storedPreferredArea]);
+	}), [storedName, storedEmail, storedRegionName]);
 
 	const passwordFields = useMemo<AccountFormFieldOptions>(() => ({
 		currentPassword: {
@@ -123,7 +183,6 @@ export function SettingsPage() {
 		},
 		newPassword: {
 			defaultValue: "",
-			required: false,
 		},
 		newPasswordConfirm: {
 			defaultValue: "",
@@ -140,16 +199,21 @@ export function SettingsPage() {
 		},
 	}), [currentPasswordMessage, passwordConfirmMessage]);
 
+	const logout = useCallback(async () => {
+		logoutMutation.mutate();
+		navigate(ROUTES.HOME, { replace: true });
+	}, [logoutMutation, navigate]);
+
  	const handleInfoSubmit = useCallback<AccountFormProps["onSubmit"]>(async (_, formValues) => {
 		setInfoRequestErrorMessage("");
 		setIsInfoSuccess(false);
 
 		const name = formValues.name.trim() || storedName;
-		const preferredArea = formValues.preferredArea.trim() || storedPreferredArea;
+		const region = formValues.region.name.trim() || storedRegionName || "";
 
 		if (
 			name === storedName
-			&& preferredArea === storedPreferredArea
+			&& region === (storedRegionName ?? "")
 		) {
 			setIsInfoSuccess(true);
 			return;
@@ -158,19 +222,19 @@ export function SettingsPage() {
 		try {
 			const updatedProfile = await updateProfileInfoMutation.mutateAsync({
 				name,
-				preferredArea,
+				regionId: regionNames.get(region)?.id,
 			});
 
 			setProfile({
+				cuid: updatedProfile.cuid,
 				name: updatedProfile.name,
-				email: updatedProfile.email,
-				preferredArea: updatedProfile.preferredArea,
+				regionName: updatedProfile.regionName,
 			});
 			setIsInfoSuccess(true);
 		} catch (error) {
 			setInfoRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [storedName, storedPreferredArea, setProfile, updateProfileInfoMutation]);
+	}, [storedName, storedRegionName, setProfile, updateProfileInfoMutation, regionNames]);
 
 	const handlePasswordSubmit = useCallback<AccountFormProps["onSubmit"]>(async (_, formValues) => {
 		setPasswordRequestErrorMessage("");
@@ -191,14 +255,10 @@ export function SettingsPage() {
 		}
 
 		try {
-			const response = await updatePasswordMutation.mutateAsync({
+			await updatePasswordMutation.mutateAsync({
 				currentPassword,
 				newPassword,
 			});
-			if (!response.isSuccess) {
-				setPasswordRequestErrorMessage("비밀번호 변경에 실패했어요.");
-				return;
-			}
 			setIsPasswordSuccess(true);
 		} catch (error) {
 			setPasswordRequestErrorMessage(getRequestErrorMessage(error));
@@ -209,6 +269,12 @@ export function SettingsPage() {
 		<>
 			<Header
 				heading="프로필 설정"
+				children={<Button
+					variant="outline"
+					children="로그아웃"
+					className="p-4 shadow-md font-bold"
+					onClick={logout}
+				/>}
 			/>
 
 			<main className="flex-1 flex flex-col gap-6 py-6 app-container">

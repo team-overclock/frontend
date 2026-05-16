@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getSession, signIn, signUp, updatePassword, updateProfileInfo } from "@/lib/api";
+import { loginCheck, signUp, login, guestLogin, logout, updateUserInfo, updateUserPassword } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
 
 
 
@@ -8,16 +9,18 @@ import { getSession, signIn, signUp, updatePassword, updateProfileInfo } from "@
  * auth 관련 React Query 키 모음
  */
 export const authQueryKeys = {
-	session: ["auth", "session"] as const,
+	all: ["auth"] as const,
+	check: ["auth", "check"] as const,
+	persisted: ["auth", "persisted"] as const,
 };
 
 /**
- * 현재 세션(로그인 상태) 조회 쿼리
+ * 로그인 상태 조회 쿼리
  */
-export function useSessionQuery() {
+export function useUserQuery() {
 	return useQuery({
-		queryKey: authQueryKeys.session,
-		queryFn: getSession,
+		queryKey: authQueryKeys.check,
+		queryFn: loginCheck,
 		staleTime: 1000 * 60 * 5,
 		retry: false,
 	});
@@ -34,16 +37,48 @@ export function useSignUpMutation() {
 
 /**
  * 로그인 mutation 훅
- *
- * 성공 시 세션 쿼리 무효화 처리
  */
-export function useSignInMutation() {
+export function useLoginMutation() {
+	const authStore = useAuthStore();
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: signIn,
+		mutationFn: login,
+		onSuccess: async (userInfo) => {
+			authStore.set(userInfo);
+			await queryClient.removeQueries({ queryKey: authQueryKeys.all });
+		},
+	});
+}
+
+/**
+ * 게스트 로그인 mutation 훅
+ */
+export function useGuestLoginMutation() {
+	const authStore = useAuthStore();
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: guestLogin,
+		onSuccess: async (userInfo) => {
+			authStore.set(userInfo);
+			await queryClient.removeQueries({ queryKey: authQueryKeys.all });
+		},
+	});
+}
+
+/**
+ * 로그아웃 mutation 훅
+ */
+export function useLogoutMutation() {
+	const authStore = useAuthStore();
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: logout,
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: authQueryKeys.session });
+			authStore.clear();
+			queryClient.removeQueries({ queryKey: authQueryKeys.all });
 		},
 	});
 }
@@ -55,9 +90,9 @@ export function useUpdateProfileInfoMutation() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: updateProfileInfo,
+		mutationFn: updateUserInfo,
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: authQueryKeys.session });
+			await queryClient.invalidateQueries({ queryKey: authQueryKeys.all });
 		},
 	});
 }
@@ -66,7 +101,12 @@ export function useUpdateProfileInfoMutation() {
  * 비밀번호 변경 mutation 훅
  */
 export function useUpdatePasswordMutation() {
+	const queryClient = useQueryClient();
+
 	return useMutation({
-		mutationFn: updatePassword,
+		mutationFn: updateUserPassword,
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: authQueryKeys.all });
+		},
 	});
 }

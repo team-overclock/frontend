@@ -4,10 +4,10 @@
 export const ROUTES = {
 	HOME: "/",
 	ONBOARDING: "/onboarding",
-	MAP: "/map",
+	RECOMMENDATION: "/recommendation",
 	SETTINGS: "/settings",
-	SIGN_IN: "/sign-in",
-	SIGN_UP: "/sign-up",
+	SIGN_IN: "/login",
+	SIGN_UP: "/signup",
 } as const;
 
 /**
@@ -18,5 +18,5 @@ export const ROUTES = {
  */
 export const DEFAULT_PAGE = {
 	LOGGED_IN: ROUTES.HOME,
-	GUEST: ROUTES.SIGN_IN,
+	NOT_LOGGED_IN: ROUTES.SIGN_IN,
 };

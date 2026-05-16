@@ -4,7 +4,7 @@ import { ROUTES, DEFAULT_PAGE } from "@/shared/routes";
 
 import { RootLayout } from "@/layouts/RootLayout";
 import { HomePage } from "@/pages/home";
-import { MapPage } from "@/pages/map";
+import { RecommendationPage } from "@/pages/recommendation";
 import { OnboardingPage } from "@/pages/onboarding";
 import { SettingsPage } from "@/pages/settings";
 import { SignPage } from "@/pages/sign";
@@ -15,7 +15,7 @@ import { SignPage } from "@/pages/sign";
  * 애플리케이션의 브라우저 라우터 인스턴스
  *
  * - {@link RootLayout} 하위에 페이지 라우트 구성
- * - 매칭되지 않는 경로(`*`)는 {@link DEFAULT_PAGE.GUEST | 기본 페이지로} 리다이렉트
+ * - 매칭되지 않는 경로(`*`)는 {@link DEFAULT_PAGE.NOT_LOGGED_IN | 기본 페이지로} 리다이렉트
  */
 export const router = createBrowserRouter([
 	{
@@ -31,8 +31,8 @@ export const router = createBrowserRouter([
 				element: <OnboardingPage/>
 			},
 			{
-				path: ROUTES.MAP,
-				element: <MapPage/>
+				path: ROUTES.RECOMMENDATION,
+				element: <RecommendationPage/>
 			},
 			{
 				path: ROUTES.SETTINGS,
@@ -48,7 +48,7 @@ export const router = createBrowserRouter([
 			},
 			{
 				path: "*",
-				element: <Navigate to={DEFAULT_PAGE.GUEST} replace/>
+				element: <Navigate to={DEFAULT_PAGE.NOT_LOGGED_IN} replace/>
 			},
 		],
 	},

@@ -2,11 +2,11 @@ import { createContext, useContext } from "react";
 import { User2Icon, AtSignIcon, KeyRoundIcon, MapPinHouseIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { AREAS } from "@/shared/enum";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Item, ItemContent } from "@/components/ui/item";
 import { FloatingLabelInput, type FloatingLabelInputProps } from "@/components/input";
+import type * as schema from "@/shared/schema";
 
 
 
@@ -54,13 +54,13 @@ export interface FieldProps extends FloatingLabelInputProps {
  */
 function renderTextField(
 	leftIcon: React.ReactNode,
-	{ name, label, placeholder, ...props }: FieldProps,
+	{ name, label, placeholder, required = true, ...props }: FieldProps,
 ) {
 	return (
 		<FloatingLabelInput
 			leftIcon={leftIcon}
 			name={name}
-			label={label ?? ""}
+			label={`${label ?? ""} ${required ? "*" : ""}`.trim()}
 			placeholder={placeholder}
 			{...props}
 		/>
@@ -116,53 +116,53 @@ export function PasswordField(props: FieldProps) {
 /**
  * 동네 입력 필드 컴포넌트
  */
-export function AreaField(props: FieldProps) {
-	useFormProviderContext("AreaField");
+export function RegionField(props: FieldProps) {
+	useFormProviderContext("RegionField");
 
 	return renderTextField(<MapPinHouseIcon/>, {
-		name: "area",
+		name: "region",
 		label: "동네",
-		placeholder: `예: ${AREAS[0]}`,
+		placeholder: "예: 서울특별시 강남구 역삼동",
 		...props,
 	});
 }
 
 
 
-export interface AreaListPanelProps extends Omit<React.ComponentProps<"div">, "onSelect"> {
-	items?: string[];
-	onSelect: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, area: string) => void;
+export interface RegionListPanelProps extends Omit<React.ComponentProps<"div">, "onSelect"> {
+	items?: schema.Item[];
+	onSelect: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, region: schema.Item) => void;
 }
 
 /**
  * 동네 선택 패널 컴포넌트
  */
-export function AreaListPanel({
+export function RegionListPanel({
 	items = [],
 	onSelect,
 	className,
 	...props
-}: AreaListPanelProps) {
+}: RegionListPanelProps) {
 	return (
 		<div
 			role="listbox"
 			aria-label="동네 목록"
 			className={cn(
 				"empty:hidden pr-1 bg-secondary rounded-2xl shadow-md",
-				"h-(--area-listbox-height,auto) transition-[height]",
+				"h-(--region-listbox-height,auto) transition-[height]",
 				className,
 			)}
 			{...props}
 		>
-			<ScrollArea className="h-full **:data-[slot=scroll-area-viewport]:p-1 **:data-[slot=scroll-area-viewport]:pr-3">
+			<ScrollArea className="h-full **:data-[slot=scroll-region-viewport]:p-1 **:data-[slot=scroll-region-viewport]:pr-3">
 				{
-					items.length ? items.map(item => (
-						<Item key={item} className="rounded-2xl" asChild><button
+					items.length ? items.map(region => (
+						<Item key={region.name} className="rounded-2xl" asChild><button
 							role="option"
 							type="button"
 							className="hover:bg-background/50 transition-colors"
-							onClick={e => onSelect(e, item)}
-							children={`📍 ${item}`}
+							onClick={e => onSelect(e, region)}
+							children={`📍 ${region.name}`}
 						/></Item>
 					)) : (
 						<Item asChild><ItemContent className="text-muted-foreground">

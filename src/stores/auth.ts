@@ -1,12 +1,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import type { SignInOutput } from "@/shared/schema";
+import type { UserInfoOutput } from "@/shared/schema";
 
 
 
-interface AuthState extends Partial<SignInOutput> {
-	set: (profile: SignInOutput) => void;
+type AuthStateField = Extract<keyof UserInfoOutput, "cuid" | "name" | "regionName">;
+type AuthStateData = Pick<UserInfoOutput, AuthStateField>;
+
+interface AuthState extends Partial<AuthStateData> {
+	set: (data: AuthStateData) => void;
 	clear: () => void;
 }
 
@@ -15,23 +18,28 @@ interface AuthState extends Partial<SignInOutput> {
  */
 export const useAuthStore = create<AuthState>()(persist(set => ({
 	set: ({
+		cuid,
 		name,
-		preferredArea,
+		regionName,
 	}) => set({
+		cuid,
 		name,
-		preferredArea,
+		regionName,
 	}),
 	clear: () => set({
+		cuid: undefined,
 		name: undefined,
-		preferredArea: undefined,
+		regionName: undefined,
 	}),
 }), {
 	name: "auth-profile",
 	partialize: ({
+		cuid,
 		name,
-		preferredArea,
+		regionName,
 	}) => ({
+		cuid,
 		name,
-		preferredArea,
+		regionName,
 	}),
 }));

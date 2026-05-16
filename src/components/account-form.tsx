@@ -1,8 +1,8 @@
-import { useRef, useCallback, useMemo, useReducer, useState } from "react";
+import { useRef, useCallback, useEffect, useMemo, useState } from "react";
 
-import { AREAS } from "@/shared/enum";
 import * as schema from "@/shared/schema";
 import { cn } from "@/lib/utils";
+import { useRegionsStore, type ItemByNameMap } from "@/stores/items";
 import { filterList } from "@/lib/filter-string-list";
 
 import {
@@ -44,8 +44,10 @@ type FieldKey = typeof FIELD_KEYS[number];
  */
 const FIELD_KEYS = [
 	...BASE_FIELD_KEYS,
-	"preferredArea",
+	"region",
 ] as const;
+
+const regionDefaultValue: schema.Item = { id: 0, name: "" };
 
 /**
  * 기본 필드 렌더링 구성 객체
@@ -59,7 +61,7 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 	/**
 	 * 기본 필드 추가 props
 	 */
-	extraProps?: Partial<NormalizedFieldOptions>;
+	defaultProps?: Partial<NormalizedFieldOptions>;
 }> = {
 	name: {
 		Component: form.NameField,
@@ -69,14 +71,14 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 	},
 	currentPassword: {
 		Component: form.PasswordField,
-		extraProps: {
+		defaultProps: {
 			type: "password",
 			autoComplete: "current-password",
 		},
 	},
 	newPassword: {
 		Component: form.PasswordField,
-		extraProps: {
+		defaultProps: {
 			type: "password",
 			autoComplete: "new-password",
 			label: "새 비밀번호",
@@ -85,7 +87,7 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 	},
 	newPasswordConfirm: {
 		Component: form.PasswordField,
-		extraProps: {
+		defaultProps: {
 			type: "password",
 			autoComplete: "new-password",
 			label: "새 비밀번호 확인",
@@ -103,24 +105,26 @@ const BASE_FIELD_CONFIGS: Record<BaseFieldKey, {
 /**
  * 필드 키 기반 맵 타입
  */
-type FieldMap<T> = Record<FieldKey, T>;
+type FieldMap<K extends FieldKey, T> = Record<K, T>;
 
 /**
  * 계정 폼 입력값 타입
  */
-type AccountFormValues = FieldMap<string>;
+type AccountFormValues =
+	& FieldMap<BaseFieldKey, string>
+	& FieldMap<"region", schema.Item>;
 
 /**
  * 계정 폼 에러 타입
  */
-type AccountFormErrors = Partial<AccountFormValues>;
+type AccountFormErrors = Partial<FieldMap<FieldKey, string>>;
 
 /**
  * 필드별 옵션 입력 타입
  */
 type AccountFormFieldOptionValue<K extends FieldKey> =
-	K extends "preferredArea"
-		? boolean | NormalizedAreaFieldOptions
+	K extends "region"
+		? boolean | NormalizedRegionFieldOptions
 		: boolean | NormalizedFieldOptions;
 
 /**
@@ -136,8 +140,16 @@ export type AccountFormFieldOptions = {
 export type AccountFormValidateEvent =
 	| {
 		scope: "field";
-		field: FieldKey;
+		field: BaseFieldKey;
 		value: string;
+		error?: string;
+		isValid: boolean;
+		values: AccountFormValues;
+	}
+	| {
+		scope: "field";
+		field: "region";
+		value: schema.Item;
 		error?: string;
 		isValid: boolean;
 		values: AccountFormValues;
@@ -173,17 +185,7 @@ interface BaseOptions {
 	validator?: (values: AccountFormValues, value: string) => string | undefined,
 }
 
-/**
- * 기본 필드 정규화 옵션 타입
- */
-interface NormalizedFieldOptions extends form.FieldProps, BaseOptions {
-	defaultValue?: string;
-}
-
-/**
- * 동네 필드 정규화 옵션 타입
- */
-interface NormalizedAreaFieldOptions extends NormalizedFieldOptions {
+interface RegionOptions extends BaseOptions {
 	/**
 	 * 동네 선택 UI 모드
 	 *
@@ -196,26 +198,24 @@ interface NormalizedAreaFieldOptions extends NormalizedFieldOptions {
 }
 
 /**
- * 전체 필드 정규화 옵션 타입
+ * 기본 필드 정규화 옵션 타입
  */
-type NormalizedAccountFormFieldOptions = {
-	[K in FieldKey]: K extends "preferredArea" ? NormalizedAreaFieldOptions : NormalizedFieldOptions;
-};
-
-/**
- * 계정 폼 내 필드별 값 및 에러 타입
- */
-interface AccountFormState {
-	values: AccountFormValues;
-	errors: AccountFormErrors;
+interface NormalizedFieldOptions extends form.FieldProps, BaseOptions {
+	defaultValue?: string;
 }
 
 /**
- * 계정 폼 reducer 액션 타입
+ * 동네 필드 정규화 옵션 타입
  */
-type AccountFormAction =
-	| { type: "set-field"; field: FieldKey; value: string }
-	| { type: "set-errors"; errors: AccountFormErrors };
+interface NormalizedRegionFieldOptions extends NormalizedFieldOptions, RegionOptions {
+}
+
+/**
+ * 전체 필드 정규화 옵션 타입
+ */
+type NormalizedAccountFormFieldOptions = {
+	[K in FieldKey]: K extends "region" ? NormalizedRegionFieldOptions : NormalizedFieldOptions;
+};
 
 /**
  * 필드 옵션을 정규화하는 함수
@@ -232,18 +232,18 @@ function normalizeFieldOptions(options: AccountFormFieldOptions) {
 	for (const field of FIELD_KEYS) {
 		const option = options[field];
 
-		const extraProps = field in BASE_FIELD_CONFIGS ? BASE_FIELD_CONFIGS[field as BaseFieldKey].extraProps : undefined;
+		const defaultProps = field in BASE_FIELD_CONFIGS ? BASE_FIELD_CONFIGS[field as BaseFieldKey].defaultProps : undefined;
 
 		if (option === true) {
 			normalizedOptions[field] = {
 				enabled: true,
-				...extraProps,
+				...defaultProps,
 				defaultValue: "",
 			};
 		} else if (option) {
 			normalizedOptions[field] = {
+				...defaultProps,
 				...option,
-				...extraProps,
 				defaultValue: option.defaultValue ?? "",
 				enabled: option.enabled ?? true,
 			} as NormalizedAccountFormFieldOptions[typeof field];
@@ -254,16 +254,16 @@ function normalizeFieldOptions(options: AccountFormFieldOptions) {
 }
 
 /**
- * {@link BaseOptions} key를 제거한 필드 props 반환 함수
+ * {@link RegionOptions} key를 제거한 필드 props 반환 함수
  *
  * @param option 정규화된 필드 props
  */
-function omitEnabledFlag<T extends Partial<BaseOptions>>(option: T) {
+function omitEnabledFlag<T extends Partial<RegionOptions>>(option: T) {
 	const {
 		enabled: _enabled,
-		required: _required,
 		validator: _validator,
 		nextFields: _nextFields,
+		selectMode: _selectMode,
 		...rest
 	} = option;
 	return rest;
@@ -275,49 +275,16 @@ function omitEnabledFlag<T extends Partial<BaseOptions>>(option: T) {
  * @param fields 정규화된 필드 옵션
  * @returns 폼 초기값
  */
-const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>): AccountFormValues => ({
-	name: fields.name?.defaultValue ?? "",
-	email: fields.email?.defaultValue ?? "",
-	currentPassword: fields.currentPassword?.defaultValue ?? "",
-	newPassword: fields.newPassword?.defaultValue ?? "",
-	newPasswordConfirm: fields.newPasswordConfirm?.defaultValue ?? "",
-	preferredArea: fields.preferredArea?.defaultValue ?? "",
-});
-
-/**
- * 계정 폼 reducer
- *
- * @param state 현재 폼 상태
- * @param action 상태 변경 액션
- * @returns 다음 폼 상태
- */
-function accountFormReducer(state: AccountFormState, action: AccountFormAction): AccountFormState {
-	switch (action.type) {
-		case "set-field":
-			return {
-				values: {
-					...state.values,
-					[action.field]: action.value,
-				},
-				errors: {
-					...state.errors,
-					[action.field]: undefined,
-				},
-			};
-
-		case "set-errors":
-			return {
-				values: state.values,
-				errors: {
-					...state.errors,
-					...action.errors,
-				},
-			};
-
-		default:
-			return state;
-	}
-}
+const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>, regionMap: ItemByNameMap): AccountFormValues => {
+	return {
+		name: fields.name?.defaultValue ?? "",
+		email: fields.email?.defaultValue ?? "",
+		currentPassword: fields.currentPassword?.defaultValue ?? "",
+		newPassword: fields.newPassword?.defaultValue ?? "",
+		newPasswordConfirm: fields.newPasswordConfirm?.defaultValue ?? "",
+		region: regionMap.get(fields.region?.defaultValue ?? "") ?? { ...regionDefaultValue },
+	};
+};
 
 /**
  * 각 필드별 유효성 검사
@@ -325,6 +292,7 @@ function accountFormReducer(state: AccountFormState, action: AccountFormAction):
 function validateForm(
 	values: AccountFormValues,
 	options: Partial<NormalizedAccountFormFieldOptions>,
+	regionMap: ItemByNameMap,
 ): AccountFormErrors {
 	/**
 	 * 필드별 에러 메시지 누적 객체
@@ -333,8 +301,8 @@ function validateForm(
 
 	const visitedFields = new Set<FieldKey>();
 	for (const field of FIELD_KEYS) {
-		const value = values[field].trim();
-		validateField(values, options, field, value, options[field], nextErrors, visitedFields);
+		const value = field === "region" ? values[field].name : values[field];
+		validateField(values, options, regionMap, field, value, options[field], nextErrors, visitedFields);
 	}
 
 	return nextErrors;
@@ -346,6 +314,7 @@ function validateForm(
 function validateField<F extends FieldKey>(
 	values: AccountFormValues,
 	options: Partial<NormalizedAccountFormFieldOptions>,
+	regionMap: ItemByNameMap,
 	field: F,
 	value: string,
 	option: NormalizedAccountFormFieldOptions[F] = {},
@@ -355,33 +324,36 @@ function validateField<F extends FieldKey>(
 	if (visitedFields.has(field)) {
 		return nextErrors;
 	}
+	value = value.trim();
 	visitedFields.add(field);
-	if (
+	if (option.required === false && value === "") {
+		nextErrors[field] = undefined;
+		return nextErrors
+	} else if (
 		option.enabled !== true
-		|| (option.required === false && value === "")
 		|| option.formNoValidate
 	) return nextErrors;
 
 	let msg: string | undefined;
 	if (option.validator) {
 		msg = option.validator(values, value);
+	} else if (field === "region") {
+		msg = regionMap.has(value) ? undefined : "지원하지 않는 동네예요";
 	} else {
 		const key = (
 			field.includes("Password")
 				? "password"
-				: field === "preferredArea"
-					? "area"
-					: field
+				: field
 		) as keyof typeof schema;
 		msg = schema[key].safeParse(value).error?.issues[0]?.message;
 	}
 	if (msg) nextErrors[field] = msg;
-	else delete nextErrors[field];
+	else nextErrors[field] = undefined;
 
 	for (const nextField of option.nextFields ?? []) {
-		const nextValue =  values[nextField].trim();
+		const nextValue = nextField === "region" ? values[nextField].name : values[nextField];
 		if (!nextValue) continue;
-		validateField(values, options, nextField, nextValue, options[nextField], nextErrors, visitedFields);
+		validateField(values, options, regionMap, nextField, nextValue, options[nextField], nextErrors, visitedFields);
 	}
 
 	return nextErrors;
@@ -415,30 +387,95 @@ export function AccountForm({
 	...props
 }: AccountFormProps) {
 	const fields = useMemo(() => normalizeFieldOptions(fieldOptions), [fieldOptions]);
-	const preferredAreaField = fields.preferredArea;
-	const isAreaDialogMode = preferredAreaField?.selectMode !== "inline";
+	const regionField = fields.region;
+	const isRegionDialogMode = regionField?.selectMode !== "inline";
+	const regionsStore = useRegionsStore();
+
+	const regionItems = regionsStore.items;
+	const regionMap = regionsStore.getMap();
 
 	/**
 	 * 다이얼로그 닫힘 시 포커스 복원용 ref
 	 */
 	const openDialogButtonRef = useRef<HTMLButtonElement>(null);
-	const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
-	const [areaDraftValue, setAreaDraftValue] = useState("");
-	const [formState, dispatchFormState] = useReducer(accountFormReducer, {
-		values: createInitialValues(fields),
-		errors: {},
-	});
+	const [isRegionDialogOpen, setIsRegionDialogOpen] = useState(false);
+	const [regionDraftValue, setRegionDraftValue] = useState("");
+	const [values, setValues] = useState(() => createInitialValues(fields, regionMap));
+	const [errors, setErrors] = useState<AccountFormErrors>({});
 
-	const { values, errors } = formState;
+	useEffect(() => {
+		regionsStore.fetch();
+	}, [regionsStore]);
+
+	useEffect(() => {
+		const frameId = requestAnimationFrame(() => {
+			setValues(createInitialValues(fields, regionMap));
+			setErrors({});
+		});
+
+		return () => cancelAnimationFrame(frameId);
+	}, [fields, regionMap]);
+
+	const getRegionItem = useCallback(
+		(name: string) => regionMap.get(name) ?? { id: 0, name },
+		[regionMap],
+	);
 
 	const setFieldValue = useCallback((field: FieldKey, value: string) => {
-		dispatchFormState({ type: "set-field", field, value });
+		if (field !== "region") {
+			setValues(p => ({
+				...p,
+				[field]: value,
+			}));
+		} else {
+			setValues(p => ({
+				...p,
+				region: getRegionItem(value),
+			}));
+		}
+	}, [getRegionItem]);
+
+	const setErrorValue = useCallback((value: AccountFormErrors) => {
+		setErrors(p => ({
+			...p,
+			...value,
+		}));
 	}, []);
 
-	const filteredAreaList = useMemo(
-		() => filterList(AREAS, isAreaDialogMode ? areaDraftValue : values.preferredArea),
-		[areaDraftValue, isAreaDialogMode, values.preferredArea],
+	const filteredRegionList = useMemo(
+		() => filterList(
+			regionItems,
+			isRegionDialogMode ? regionDraftValue : values.region.name,
+			{ getString: region => region.name },
+		),
+		[regionDraftValue, isRegionDialogMode, values.region, regionItems],
 	);
+
+	const callOnValidate = useCallback((
+		field: FieldKey,
+		value: string,
+		nextValues: AccountFormValues,
+	) => {
+		if (field === "region") {
+			onValidate?.({
+				scope: "field",
+				field,
+				value: getRegionItem(value),
+				error: errors[field],
+				isValid: !errors[field],
+				values: nextValues,
+			});
+		} else {
+			onValidate?.({
+				scope: "field",
+				field,
+				value,
+				error: errors[field],
+				isValid: !errors[field],
+				values: nextValues,
+			});
+		}
+	}, [onValidate, errors, getRegionItem]);
 
 	const handleInputChangeAndBlur = useCallback((
 		event: React.ChangeEvent<HTMLInputElement, Element>,
@@ -454,25 +491,15 @@ export function AccountForm({
 			...values,
 			[field]: value,
 		};
-		const errors = validateField(nextValues, fields, field, value, fields[field]);
-		dispatchFormState({
-			type: "set-errors",
-			errors,
-		});
+		const errors = validateField(nextValues, fields, regionMap, field, value, fields[field]);
+		setErrorValue(errors);
 
-		onValidate?.({
-			scope: "field",
-			field,
-			value,
-			error: errors[field],
-			isValid: !errors[field],
-			values: nextValues,
-		});
+		callOnValidate(field, value, nextValues);
 
 		if (!errors[field]) {
 			cb?.(event);
 		}
-	}, [fields, noValidate, setFieldValue, onValidate, values]);
+	}, [fields, noValidate, regionMap, setFieldValue, setErrorValue, callOnValidate, values]);
 
 	const handleInputClear = useCallback((
 		event: Parameters<Exclude<form.FieldProps["onClear"], undefined>>[0],
@@ -489,118 +516,87 @@ export function AccountForm({
 			...values,
 			[field]: "",
 		};
-		const errors = validateField(nextValues, fields, field, "", fields[field]);
-		dispatchFormState({
-			type: "set-errors",
-			errors,
-		});
-		onValidate?.({
-			scope: "field",
-			field,
-			value: "",
-			error: errors[field],
-			isValid: !errors[field],
-			values: nextValues,
-		});
+		const errors = validateField(nextValues, fields, regionMap, field, "", fields[field]);
+		setErrorValue(errors);
+		callOnValidate(field, "", nextValues);
 
 		cb?.(event, node);
-	}, [fields, noValidate, setFieldValue, onValidate, values]);
+	}, [fields, noValidate, regionMap, setFieldValue, setErrorValue, callOnValidate, values]);
 
-	const openAreaDialog = useCallback(() => {
-		if (!preferredAreaField || preferredAreaField.readOnly || preferredAreaField.disabled) return;
-		setAreaDraftValue(values.preferredArea);
-		setIsAreaDialogOpen(true);
-	}, [preferredAreaField, values.preferredArea]);
+	const openRegionDialog = useCallback(() => {
+		if (!regionField || regionField.readOnly || regionField.disabled) return;
+		setRegionDraftValue(values.region.name);
+		setIsRegionDialogOpen(true);
+	}, [regionField, values]);
 
 	const handleDialogOpenChange = useCallback((open: boolean) => {
 		if (!open) {
-			setFieldValue("preferredArea", areaDraftValue);
+			setFieldValue("region", regionDraftValue);
 			if (!noValidate) {
 				const nextValues = {
 					...values,
-					preferredArea: areaDraftValue,
+					region: getRegionItem(regionDraftValue),
 				};
-				const errors = validateField(values, fields, "preferredArea", areaDraftValue, preferredAreaField);
-				dispatchFormState({
-					type: "set-errors",
-					errors,
-				});
-				onValidate?.({
-					scope: "field",
-					field: "preferredArea",
-					value: areaDraftValue,
-					error: errors.preferredArea,
-					isValid: !errors.preferredArea,
-					values: nextValues,
-				});
+				const errors = validateField(values, fields, regionMap, "region", regionDraftValue, regionField);
+				setErrorValue(errors);
+				callOnValidate("region", regionDraftValue, nextValues);
 			}
-			setAreaDraftValue("");
+			setRegionDraftValue(regionDefaultValue.name);
 		} else {
-			setAreaDraftValue(values.preferredArea);
+			setRegionDraftValue(values.region.name);
 		}
-		setIsAreaDialogOpen(open);
-	}, [noValidate, areaDraftValue, preferredAreaField, setFieldValue, onValidate, fields, values]);
+		setIsRegionDialogOpen(open);
+	}, [noValidate, regionDraftValue, regionField, callOnValidate, fields, values, regionMap, setFieldValue, setErrorValue, getRegionItem]);
 
-	const handleDialogAreaChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
-		setAreaDraftValue(event.target.value);
+	const handleDialogRegionChange: React.ChangeEventHandler<HTMLInputElement> = useCallback((event) => {
+		setRegionDraftValue(event.target.value);
 	}, []);
 
-	const handleDialogAreaClear = useCallback<Exclude<form.FieldProps["onClear"], undefined>>(() => {
-		setAreaDraftValue("");
+	const handleDialogRegionClear = useCallback<Exclude<form.FieldProps["onClear"], undefined>>(() => {
+		setRegionDraftValue(regionDefaultValue.name);
 	}, []);
 
-	const handleInlineAreaSelect: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
+	const handleInlineRegionSelect: form.RegionListPanelProps["onSelect"] = useCallback((event, region) => {
 		event.currentTarget.blur();
-		setFieldValue("preferredArea", area);
+		setFieldValue("region", region.name);
 
 		if (noValidate) return;
 		const nextValues = {
 			...values,
-			preferredArea: area,
+			region,
 		};
-		const errors = validateField(values, fields, "preferredArea", area, preferredAreaField);
-		dispatchFormState({
-			type: "set-errors",
-			errors,
-		});
-		onValidate?.({
-			scope: "field",
-			field: "preferredArea",
-			value: area,
-			error: errors.preferredArea,
-			isValid: !errors.preferredArea,
-			values: nextValues,
-		});
-	}, [noValidate, preferredAreaField, setFieldValue, onValidate, fields, values]);
+		const errors = validateField(values, fields, regionMap, "region", region.name, regionField);
+		setErrorValue(errors);
+		callOnValidate("region", region.name, nextValues);
+	}, [noValidate, regionField, callOnValidate, fields, values, regionMap, setFieldValue, setErrorValue]);
 
-	const handleDialogAreaSelect: form.AreaListPanelProps["onSelect"] = useCallback((event, area) => {
+	const handleDialogRegionSelect: form.RegionListPanelProps["onSelect"] = useCallback((event, region) => {
 		event.currentTarget.blur();
-		setFieldValue("preferredArea", area);
-		setAreaDraftValue(area);
-		setIsAreaDialogOpen(false);
-	}, [setFieldValue]);
+		const errors = validateField(values, fields, regionMap, "region", region.name, regionField);
+		setErrorValue(errors);
+		setFieldValue("region", region.name);
+		setRegionDraftValue(region.name);
+		setIsRegionDialogOpen(false);
+	}, [setFieldValue, regionField, fields, values, regionMap, setErrorValue]);
 
 	const handleFormSubmit: React.SubmitEventHandler<HTMLFormElement> = useCallback((event) => {
 		event.preventDefault();
 
 		if (!noValidate) {
-			const nextErrors = validateForm(values, fields);
-			const isValid = Object.keys(nextErrors).length === 0;
+			const nextErrors = validateForm(values, fields, regionMap);
+			const isValid = Object.values(nextErrors).filter(Boolean).length === 0;
 			onValidate?.({
 				scope: "form",
 				errors: nextErrors,
 				isValid,
 				values,
 			});
-			dispatchFormState({
-				type: "set-errors",
-				errors: nextErrors,
-			});
+			setErrorValue(nextErrors);
 			if (!isValid) return;
 		}
 
 		onSubmit(event, values);
-	}, [fields, noValidate, onSubmit, onValidate, values]);
+	}, [fields, noValidate, onSubmit, onValidate, values, regionMap, setErrorValue]);
 
 	const renderBaseField = useCallback((fieldKey: BaseFieldKey) => {
 		const fieldOption = fields[fieldKey];
@@ -629,9 +625,9 @@ export function AccountForm({
 		);
 	}, [errors, fields, handleInputChangeAndBlur, handleInputClear, values]);
 
-	const showInlineAreaList = !!preferredAreaField && preferredAreaField.enabled === true && !preferredAreaField.readOnly && !preferredAreaField.disabled && !isAreaDialogMode;
-	const showAreaDialog = !!preferredAreaField && preferredAreaField.enabled === true && !preferredAreaField.readOnly && !preferredAreaField.disabled && isAreaDialogMode;
-	const renderablePreferredAreaField = preferredAreaField ? omitEnabledFlag(preferredAreaField) : undefined;
+	const showInlineRegionList = !!regionField && regionField.enabled === true && !regionField.readOnly && !regionField.disabled && !isRegionDialogMode;
+	const showRegionDialog = !!regionField && regionField.enabled === true && !regionField.readOnly && !regionField.disabled && isRegionDialogMode;
+	const renderableRegionField = regionField ? omitEnabledFlag(regionField) : undefined;
 
 	return (
 		<>
@@ -651,25 +647,25 @@ export function AccountForm({
 
 				{BASE_FIELD_KEYS.map(renderBaseField)}
 
-				{preferredAreaField && (
+				{regionField && (
 					<div>
-						{preferredAreaField.enabled === true && renderablePreferredAreaField && (
-							<form.AreaField
-								name="preferredArea"
-								value={values.preferredArea}
-								errorMessage={errors.preferredArea}
-								{...renderablePreferredAreaField}
-								onBlur={e => handleInputChangeAndBlur(e, renderablePreferredAreaField.onBlur)}
-								onChange={e => handleInputChangeAndBlur(e, renderablePreferredAreaField.onChange)}
-								onClear={preferredAreaField.readOnly || preferredAreaField.disabled ? undefined : (...args) => handleInputClear(...args, renderablePreferredAreaField.onClear)}
-								readOnly={isAreaDialogMode || preferredAreaField.readOnly}
-								tabIndex={isAreaDialogMode ? -1 : undefined}
+						{regionField.enabled === true && renderableRegionField && (
+							<form.RegionField
+								name="region"
+								value={values.region.name}
+								errorMessage={errors.region}
+								{...renderableRegionField}
+								onBlur={e => handleInputChangeAndBlur(e, renderableRegionField.onBlur)}
+								onChange={e => handleInputChangeAndBlur(e, renderableRegionField.onChange)}
+								onClear={regionField.readOnly || regionField.disabled ? undefined : (...args) => handleInputClear(...args, renderableRegionField.onClear)}
+								readOnly={isRegionDialogMode || regionField.readOnly}
+								tabIndex={isRegionDialogMode ? -1 : undefined}
 								defaultValue={undefined}
-								rightIcon={isAreaDialogMode ? (
+								rightIcon={isRegionDialogMode ? (
 									<Button
 										ref={openDialogButtonRef}
 										type="button"
-										onClick={openAreaDialog}
+										onClick={openRegionDialog}
 										className="mr-3"
 										children="📍 동네 찾기"
 									/>
@@ -677,11 +673,11 @@ export function AccountForm({
 							/>
 						)}
 
-						{showInlineAreaList && (
-							<form.AreaListPanel
+						{showInlineRegionList && (
+							<form.RegionListPanel
 								className="mt-2"
-								items={filteredAreaList}
-								onSelect={handleInlineAreaSelect}
+								items={filteredRegionList}
+								onSelect={handleInlineRegionSelect}
 							/>
 						)}
 					</div>
@@ -690,8 +686,8 @@ export function AccountForm({
 				{children}
 			</form.Provider>
 
-			{showAreaDialog && (
-				<Dialog open={isAreaDialogOpen} onOpenChange={handleDialogOpenChange}>
+			{showRegionDialog && (
+				<Dialog open={isRegionDialogOpen} onOpenChange={handleDialogOpenChange}>
 					<DialogContent
 						onCloseAutoFocus={event => {
 							event.preventDefault();
@@ -709,24 +705,24 @@ export function AccountForm({
 								<DialogTitle>동네 선택</DialogTitle>
 								<DialogDescription className="space-y-4" asChild><div>
 									<p>원하는 동네를 선택해 주세요.</p>
-									<form.AreaField
-										name="preferredArea"
-										value={areaDraftValue}
-										onChange={handleDialogAreaChange}
-										onClear={handleDialogAreaClear}
-										{...renderablePreferredAreaField}
+									<form.RegionField
+										name="region"
+										value={regionDraftValue}
+										onChange={handleDialogRegionChange}
+										onClear={handleDialogRegionClear}
+										{...renderableRegionField}
 										defaultValue={undefined}
 									/>
 								</div></DialogDescription>
 							</DialogHeader>
 
 							<div className="min-h-0 overflow-hidden">
-								<form.AreaListPanel
+								<form.RegionListPanel
 									className="shadow-none rounded-none"
-									items={filteredAreaList}
-									onSelect={handleDialogAreaSelect}
+									items={filteredRegionList}
+									onSelect={handleDialogRegionSelect}
 									style={{
-										"--area-listbox-height": "50svh",
+										"--region-listbox-height": "50svh",
 									} as React.CSSProperties}
 								/>
 							</div>

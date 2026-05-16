@@ -1,41 +1,75 @@
 import { request } from "@/lib/client";
 
-import {
-	type SignInInput,
-	type SignUpInput,
-	type SignInOutput,
-	type UpdateProfileInfoInput,
-	type UpdateProfileInfoOutput,
-	type UpdatePasswordInput,
-	type UpdatePasswordOutput,
-	type SubmitOnboardingInput,
-	type SubmitOnboardingOutput,
-	signInInput,
-	signUpInput,
-	signInOutput,
-	updateProfileInfoInput,
-	updateProfileInfoOutput,
-	updatePasswordInput,
-	updatePasswordOutput,
-	submitOnboardingInput,
-	submitOnboardingOutput,
-	sessionResponse,
-} from "@/shared/schema";
+import * as schema from "@/shared/schema";
 
 
+
+/**
+ * 지역 목록 조회
+ */
+export function healthCheck() {
+	return request({
+		guard: {
+			response: schema.healthCheckOutput,
+		},
+		method: "GET",
+		url: "/",
+	});
+}
+
+/**
+ * 지역 목록 조회
+ */
+export function getRegions() {
+	return request({
+		guard: {
+			response: schema.getItemsOutput,
+		},
+		method: "GET",
+		url: "/regions",
+	});
+}
+
+/**
+ * 인프라 유형 목록 조회
+ */
+export function getInfraTypes() {
+	return request({
+		guard: {
+			response: schema.getItemsOutput,
+		},
+		method: "GET",
+		url: "/infrastructure-types",
+	});
+}
+
+
+
+
+export async function loginCheck() {
+	return request({
+		guard: {
+			response: schema.authCheckOutput,
+		},
+		method: "GET",
+		url: "/auth/check",
+	});
+}
 
 /**
  * 회원가입 요청
  *
  * @param input 회원가입 폼 입력값 객체
  */
-export async function signUp(input: SignUpInput): Promise<void> {
-	const payload = signUpInput.parse(input);
-
-	await request({
+export async function signUp(data: schema.SignUpInput) {
+	return request({
+		guard: {
+			request: schema.signUpInput,
+			response: schema.userInfoOutput,
+		},
 		method: "POST",
-		url: "/auth/sign-up",
-		data: payload,
+		url: "/auth/signup",
+		data,
 	});
 }
 
@@ -44,74 +78,136 @@ export async function signUp(input: SignUpInput): Promise<void> {
  *
  * @param input 로그인 폼 입력값 객체
  */
-export async function signIn(input: SignInInput): Promise<SignInOutput> {
-	const payload = signInInput.parse(input);
-
-	const response = await request({
+export async function login(data: schema.LoginInput) {
+	return request({
+		guard: {
+			request: schema.loginInput,
+			response: schema.userInfoOutput,
+		},
 		method: "POST",
-		url: "/auth/sign-in",
-		data: payload,
+		url: "/auth/login",
+		data,
 	});
-
-	return signInOutput.parse(response.data);
 }
 
 /**
- * 세션 정보 조회
+ * 게스트 로그인 요청
  */
-export async function getSession(): Promise<{ isLoggedIn: boolean }> {
-	const response = await request({
-		method: "GET",
-		url: "/auth/session",
+export async function guestLogin() {
+	return request({
+		guard: {
+			response: schema.userInfoOutput,
+		},
+		method: "POST",
+		url: "/auth/guest",
 	});
+}
 
-	const parsed = sessionResponse.parse(response.data);
-	const isLoggedIn = parsed.isLoggedIn ?? !!parsed.user;
+/**
+ * 로그아웃
+ */
+export async function logout() {
+	return request({
+		method: "POST",
+		url: "/auth/logout",
+	});
+}
 
-	return { isLoggedIn };
+/**
+ * 사용자 정보 조회
+ */
+export async function getUserInfo() {
+	return request({
+		guard: {
+			response: schema.userInfoOutput,
+		},
+		method: "GET",
+		url: "/users/me",
+	});
 }
 
 /**
  * 사용자 정보(이름/동네) 수정 요청
  */
-export async function updateProfileInfo(input: UpdateProfileInfoInput): Promise<UpdateProfileInfoOutput> {
-	const payload = updateProfileInfoInput.parse(input);
-
-	const response = await request({
+export async function updateUserInfo(data: schema.UserInfoUpdateInput) {
+	return request({
+		guard: {
+			request: schema.userInfoUpdateInput,
+			response: schema.userInfoOutput,
+		},
 		method: "PATCH",
-		url: "/auth/profile/info",
-		data: payload,
+		url: "/users/me",
+		data,
 	});
-
-	return updateProfileInfoOutput.parse(response.data);
 }
 
 /**
  * 비밀번호 변경 요청
  */
-export async function updatePassword(input: UpdatePasswordInput): Promise<UpdatePasswordOutput> {
-	const payload = updatePasswordInput.parse(input);
-
-	const response = await request({
-		method: "PATCH",
-		url: "/auth/profile/password",
-		data: payload,
+export async function updateUserPassword(data: schema.UserPasswordUpdateInput) {
+	return request({
+		guard: {
+			request: schema.userPasswordUpdateInput,
+		},
+		method: "POST",
+		url: "/users/me/password",
+		data,
 	});
+}
 
-	return updatePasswordOutput.parse(response.data);
+
+
+/**
+ * 사용자 추천 생성 요청 목록 조회
+ */
+export async function getRecommendations() {
+	return request({
+		guard: {
+			response: schema.userRecommendationsOutput,
+		},
+		method: "GET",
+		url: "/users/me/recommendations",
+	});
 }
 
 /**
- * 온보딩 정보 제출 요청
+ * 선택한 조건 기반 추천 요청
  */
-export async function submitOnboarding(input: SubmitOnboardingInput): Promise<SubmitOnboardingOutput> {
-	const payload = submitOnboardingInput.parse(input);
-
-	const response = await request({
+export async function createRecommendation(data: schema.RecommendationCreateInput) {
+	return request({
+		guard: {
+			request: schema.recommendationCreateInput,
+			response: schema.recommendationCreateOutput,
+		},
 		method: "POST",
-		url: "/onboarding",
-		data: payload,
+		url: "/recommendations",
+		data,
 	});
+}
 
-	return submitOnboardingOutput.parse(response.data);
+/**
+ * 추천 생성 결과 조회
+ */
+export async function getRecommendation(taskId: string) {
+	return request({
+		guard: {
+			response: schema.recommendationSummaryOutput,
+		},
+		method: "GET",
+		url: `/recommendations/${taskId}`,
+	});
+}
+
+/**
+ * 추천 생성 결과 내 매물 상세 정보 조회
+ */
+export async function getRecommendationProperty(taskId: string, propertyId: number, data: schema.RecommendationCreateInput) {
+	return request({
+		guard: {
+			response: schema.recommendationPropertyDetailOutput,
+		},
+		method: "POST",
+		url: `/recommendations/${taskId}/properties/${propertyId}`,
+		data,
+	});
 }

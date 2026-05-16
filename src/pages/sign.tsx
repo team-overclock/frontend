@@ -1,13 +1,14 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, Navigate, useNavigate } from "react-router";
 
 import { cn } from "@/lib/utils";
-import { ROUTES } from "@/shared/routes";
-import { useSessionQuery, useSignInMutation, useSignUpMutation } from "@/hooks/auth";
+import { DEFAULT_PAGE, ROUTES } from "@/shared/routes";
+import { useSignUpMutation, useLoginMutation, useUserQuery } from "@/hooks/auth";
 import { useAuthStore } from "@/stores/auth";
 import { getRequestErrorMessage } from "@/lib/request-error";
 
-import { AccountForm, type AccountFormProps } from "@/components/account-form";
+import { AccountForm, type AccountFormProps, type AccountFormFieldOptions } from "@/components/account-form";
+import { GuestLoginButton } from "@/components/guest-login-button";
 import { Footer } from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,55 +93,85 @@ export function SignPage({ mode }: SignPageProps) {
 }
 
 function SignPageContent({ mode }: SignPageProps) {
-	const isLogin = mode === "sign-in";
+	const isLoginPage = mode === "sign-in";
 	const formId = "sign-form";
-	const sessionQuery = useSessionQuery();
-	const signInMutation = useSignInMutation();
+	const setAuth = useAuthStore((s) => s.set);
+
+	const accountFields = useMemo<AccountFormFieldOptions>(() => ({
+		name: !isLoginPage,
+		email: true,
+		currentPassword: isLoginPage,
+		newPassword: {
+			enabled: !isLoginPage,
+			label: "비밀번호",
+		},
+		newPasswordConfirm: {
+			enabled: !isLoginPage,
+			label: "비밀번호 확인",
+		},
+		region: {
+			enabled: !isLoginPage,
+			required: false,
+		},
+	}), [isLoginPage]);
+
+	const loginMutation = useLoginMutation();
 	const signUpMutation = useSignUpMutation();
-	const setProfile = useAuthStore(state => state.set);
+	const {
+		 data: {
+			isLoggedIn = false,
+			user: userInfo = null,
+		 } = {},
+	} = useUserQuery();
 	const navigate = useNavigate();
 
 	const [requestErrorMessage, setRequestErrorMessage] = useState("");
-	const isSubmitting = isLogin
-		? signInMutation.isPending
-		: (signInMutation.isPending || signUpMutation.isPending);
+	const isSubmitting = isLoginPage
+		? loginMutation.isPending
+		: (loginMutation.isPending || signUpMutation.isPending);
 
 	const handleSubmit = useCallback<AccountFormProps["onSubmit"]>(async (_, formValues) => {
 		setRequestErrorMessage("");
 
 		try {
-			const password = isLogin ? formValues.currentPassword : formValues.newPassword;
+			const password = isLoginPage ? formValues.currentPassword : formValues.newPassword;
 
-			if (!isLogin) {
+			if (!isLoginPage) {
 				await signUpMutation.mutateAsync({
 					name: formValues.name,
 					email: formValues.email,
 					password,
-					preferredArea: formValues.preferredArea,
+					regionId: formValues.region.id || undefined,
 				});
 			}
 
-			const signedInUser = await signInMutation.mutateAsync({
-				email: formValues.email,
-				password,
-			});
+			let nextPage: string = DEFAULT_PAGE.LOGGED_IN;
+			try {
+				await loginMutation.mutateAsync({
+					email: formValues.email,
+					password,
+				});
+			} catch {
+				if (isLoginPage) {
+					throw new Error("이메일과 비밀번호를 다시 확인해 주세요");
+				}
+				nextPage = ROUTES.SIGN_IN;
+			}
 
-			setProfile({
-				name: signedInUser.name,
-				email: signedInUser.email,
-				preferredArea: signedInUser.preferredArea,
-			});
-
-			navigate(ROUTES.HOME, { replace: true });
+			navigate(nextPage, { replace: true });
 		} catch (error) {
 			setRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [setProfile, setRequestErrorMessage, isLogin, navigate, signInMutation, signUpMutation]);
+	}, [setRequestErrorMessage, isLoginPage, navigate, loginMutation, signUpMutation]);
 
-	const isLoggedIn = sessionQuery.data?.isLoggedIn ?? false;
+	useEffect(() => {
+		if (isLoggedIn && userInfo) {
+			setAuth(userInfo);
+		}
+	}, [isLoggedIn, userInfo, setAuth]);
 
 	if (isLoggedIn) {
-		return <Navigate to={ROUTES.HOME} replace/>;
+		return <Navigate to={DEFAULT_PAGE.LOGGED_IN} replace/>;
 	}
 
 	return (
@@ -152,21 +183,22 @@ function SignPageContent({ mode }: SignPageProps) {
 				badges={badges}
 				className="space-y-3 pt-12 pb-6"
 			/>
+			<div className="flex justify-center-safe items-center-safe">
+				<GuestLoginButton
+					variant="default"
+					className="px-5 py-4 rounded-full font-bold text-base shadow-md"
+					children="게스트 로그인"
+					to={DEFAULT_PAGE.LOGGED_IN}
+				/>
+			</div>
 			<AccountForm
 				id={formId}
 				gap={18}
-				noValidate={isLogin}
+				noValidate={isLoginPage}
 				onSubmit={handleSubmit}
 				errorMessage={requestErrorMessage}
-				className={cn("flex flex-col", !isLogin && "*:last:flex-1")}
-				fields={{
-					name: !isLogin,
-					email: true,
-					currentPassword: isLogin,
-					newPassword: !isLogin,
-					newPasswordConfirm: !isLogin,
-					preferredArea: !isLogin,
-				}}
+				className={cn("flex flex-col", !isLoginPage && "*:last:flex-1")}
+				fields={accountFields}
 			/>
 			<Footer className="flex flex-col items-center space-y-4">
 				<Button
@@ -176,10 +208,10 @@ function SignPageContent({ mode }: SignPageProps) {
 					size="lg"
 					className="max-w-md w-full rounded-full font-bold shadow-md"
 					disabled={isSubmitting}
-					children={isLogin ? "로그인" : "회원가입"}
+					children={isLoginPage ? "로그인" : "회원가입"}
 				/>
 				<p className="text-center text-sm text-muted-foreground">
-					{isLogin ? (
+					{isLoginPage ? (
 						<>
 							계정이 없으신가요? <NavLink className="font-medium" to={ROUTES.SIGN_UP}>회원가입</NavLink>
 						</>
