@@ -33,6 +33,8 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # 운영용: 빌드
 FROM base-pnpm AS prod-build
+ARG VITE_BACKEND_URL
+ARG VITE_KAKAO_MAP_API_KEY
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY package.json pnpm-lock.yaml ./
 COPY tsconfig*.json vite.config.ts index.html ./
