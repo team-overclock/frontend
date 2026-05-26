@@ -8,7 +8,7 @@ export type PriceKey = typeof PRICE_KEYS[number];
  */
 export const PRICE_KEYS = [
 	"sale",
-	"deposit",
+	"jeonse",
 ] as const;
 
 /**

@@ -130,8 +130,8 @@ export function RegionField(props: FieldProps) {
 
 
 export interface RegionListPanelProps extends Omit<React.ComponentProps<"div">, "onSelect"> {
-	items?: schema.Item[];
-	onSelect: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, region: schema.Item) => void;
+	items?: schema.RegionItem[];
+	onSelect: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, region: schema.RegionItem) => void;
 }
 
 /**

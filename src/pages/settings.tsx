@@ -5,7 +5,7 @@ import { CheckCheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/shared/routes";
 import { useLogoutMutation, useUserQuery, useUpdatePasswordMutation, useUpdateProfileInfoMutation } from "@/hooks/auth";
-import { useRegionsStore } from "@/stores/items";
+// import { useRegionsStore } from "@/stores/items";
 import { useAuthStore } from "@/stores/auth";
 import { getRequestErrorMessage } from "@/lib/request-error";
 
@@ -82,7 +82,7 @@ export function SettingsPage() {
 	const logoutMutation = useLogoutMutation();
 	const updateProfileInfoMutation = useUpdateProfileInfoMutation();
 	const updatePasswordMutation = useUpdatePasswordMutation();
-	const regionsStore = useRegionsStore();
+	// const regionsStore = useRegionsStore();
 	const { set: setProfile } = useAuthStore();
 	const {
 		data: {
@@ -90,11 +90,13 @@ export function SettingsPage() {
 		} = {},
 	} = useUserQuery();
 
-	const regionNames = regionsStore.getMap();
+	// const regionNames = regionsStore.getMap();
 
 	const {
 		name: storedName = "",
 		email: storedEmail = "",
+
+		/// @ts-expect-error: ts(2339)
 		regionName: storedRegionName = "",
 	} = user ?? {};
 
@@ -113,9 +115,9 @@ export function SettingsPage() {
 	const infoSuccessTimer = useRef<number | null>(null);
 	const passwordSuccessTimer = useRef<number | null>(null);
 
-	useEffect(() => {
-		regionsStore.fetch();
-	}, [regionsStore]);
+	// useEffect(() => {
+	// 	regionsStore.fetch();
+	// }, [regionsStore]);
 
 	useEffect(() => {
 		if (isInfoSuccess) {
@@ -166,6 +168,7 @@ export function SettingsPage() {
 		},
 		region: {
 			defaultValue: storedRegionName ?? "",
+			enabled: false,
 			required: false,
 		},
 	}), [storedName, storedEmail, storedRegionName]);
@@ -222,19 +225,19 @@ export function SettingsPage() {
 		try {
 			const updatedProfile = await updateProfileInfoMutation.mutateAsync({
 				name,
-				regionId: regionNames.get(region)?.id,
+				// regionId: regionNames.get(region)?.id,
 			});
 
 			setProfile({
 				cuid: updatedProfile.cuid,
 				name: updatedProfile.name,
-				regionName: updatedProfile.regionName,
+				// regionName: updatedProfile.regionName,
 			});
 			setIsInfoSuccess(true);
 		} catch (error) {
 			setInfoRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [storedName, storedRegionName, setProfile, updateProfileInfoMutation, regionNames]);
+	}, [storedName, storedRegionName, setProfile, updateProfileInfoMutation]);
 
 	const handlePasswordSubmit = useCallback<AccountFormProps["onSubmit"]>(async (_, formValues) => {
 		setPasswordRequestErrorMessage("");

@@ -23,7 +23,7 @@ export function healthCheck() {
 export function getRegions() {
 	return request({
 		guard: {
-			response: schema.getItemsOutput,
+			response: schema.getRegionsOutput,
 		},
 		method: "GET",
 		url: "/regions",
@@ -36,7 +36,7 @@ export function getRegions() {
 export function getInfraTypes() {
 	return request({
 		guard: {
-			response: schema.getItemsOutput,
+			response: schema.getInfraTypeOutput,
 		},
 		method: "GET",
 		url: "/infrastructure-types",

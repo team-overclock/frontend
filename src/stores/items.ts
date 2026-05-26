@@ -10,23 +10,23 @@ const STALE_TIME = 1000 * 60 * 5;
 
 type MaybePromise<T> = T | Promise<T>;
 
-interface ItemState {
-	items: schema.Item[];
+interface ItemState<T> {
+	items: T[];
 	isError: boolean;
 	isLoading: boolean;
 	updatedAt: number | null;
-	getMap: () => ItemByNameMap;
+	getMap: () => ItemByNameMap<T>;
 	fetch: () => Promise<void>;
 	clear: () => void;
 }
 
-function createItemStore(
+function createItemStore<T extends schema.RegionItem | schema.InfraTypeItem>(
 	name: string,
-	apiFn: () => MaybePromise<schema.GetItemsOutput>,
+	apiFn: () => MaybePromise<{ items: T[] }>,
 ) {
-	let lastItems: schema.Item[] = [];
-	let cachedMap: ItemByNameMap = new Map();
-	return create<ItemState>()(persist((set, get) => ({
+	let lastItems: T[] = [];
+	let cachedMap: ItemByNameMap<T> = new Map();
+	return create<ItemState<T>>()(persist((set, get) => ({
 		items: [],
 		isError: false,
 		isLoading: false,
@@ -35,7 +35,7 @@ function createItemStore(
 			const currentItems = get().items;
 			if (lastItems === currentItems) return cachedMap;
 			lastItems = currentItems;
-			cachedMap = new Map(get().items.map(item => [item.name, item]));
+			cachedMap = new Map(get().items.map(item => ["id" in item ? item.name : item.label, item]));
 			return cachedMap;
 		},
 		fetch: async () => {
@@ -75,7 +75,7 @@ function createItemStore(
 	}));
 }
 
-export type ItemByNameMap = ReadonlyMap<string, schema.Item>;
+export type ItemByNameMap<T> = ReadonlyMap<string, T>;
 
 /**
  * 동네 목록을 localStorage에 유지하는 item store.

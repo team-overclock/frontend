@@ -1,6 +1,7 @@
 import { RouterProvider } from "react-router";
 
 import { router } from "@/app/router";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryProvider } from "./QueryProvider";
 
 
@@ -13,7 +14,9 @@ import { QueryProvider } from "./QueryProvider";
 export function AppProvider() {
 	return (
 		<QueryProvider>
-			<RouterProvider router={router}/>
+			<TooltipProvider>
+				<RouterProvider router={router}/>
+			</TooltipProvider>
 		</QueryProvider>
 	);
 }

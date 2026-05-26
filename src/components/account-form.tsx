@@ -47,7 +47,7 @@ const FIELD_KEYS = [
 	"region",
 ] as const;
 
-const regionDefaultValue: schema.Item = { id: 0, name: "" };
+const regionDefaultValue: schema.RegionItem = { id: 0, name: "" };
 
 /**
  * 기본 필드 렌더링 구성 객체
@@ -112,7 +112,7 @@ type FieldMap<K extends FieldKey, T> = Record<K, T>;
  */
 type AccountFormValues =
 	& FieldMap<BaseFieldKey, string>
-	& FieldMap<"region", schema.Item>;
+	& FieldMap<"region", schema.RegionItem>;
 
 /**
  * 계정 폼 에러 타입
@@ -149,7 +149,7 @@ export type AccountFormValidateEvent =
 	| {
 		scope: "field";
 		field: "region";
-		value: schema.Item;
+		value: schema.RegionItem;
 		error?: string;
 		isValid: boolean;
 		values: AccountFormValues;
@@ -275,7 +275,7 @@ function omitEnabledFlag<T extends Partial<RegionOptions>>(option: T) {
  * @param fields 정규화된 필드 옵션
  * @returns 폼 초기값
  */
-const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>, regionMap: ItemByNameMap): AccountFormValues => {
+const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>, regionMap: ItemByNameMap<schema.RegionItem>): AccountFormValues => {
 	return {
 		name: fields.name?.defaultValue ?? "",
 		email: fields.email?.defaultValue ?? "",
@@ -292,7 +292,7 @@ const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>,
 function validateForm(
 	values: AccountFormValues,
 	options: Partial<NormalizedAccountFormFieldOptions>,
-	regionMap: ItemByNameMap,
+	regionMap: ItemByNameMap<schema.RegionItem>,
 ): AccountFormErrors {
 	/**
 	 * 필드별 에러 메시지 누적 객체
@@ -314,7 +314,7 @@ function validateForm(
 function validateField<F extends FieldKey>(
 	values: AccountFormValues,
 	options: Partial<NormalizedAccountFormFieldOptions>,
-	regionMap: ItemByNameMap,
+	regionMap: ItemByNameMap<schema.RegionItem>,
 	field: F,
 	value: string,
 	option: NormalizedAccountFormFieldOptions[F] = {},
@@ -404,8 +404,10 @@ export function AccountForm({
 	const [errors, setErrors] = useState<AccountFormErrors>({});
 
 	useEffect(() => {
-		regionsStore.fetch();
-	}, [regionsStore]);
+		if (regionField?.enabled === true && regionItems.length === 0) {
+			regionsStore.fetch();
+		}
+	}, [regionField?.enabled, regionItems, regionsStore]);
 
 	useEffect(() => {
 		const frameId = requestAnimationFrame(() => {

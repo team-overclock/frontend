@@ -11,8 +11,8 @@ import { createRecommendation } from "@/lib/api";
 import { useRegionsStore, useInfraTypesStore } from "@/stores/items";
 import { filterList } from "@/lib/filter-string-list";
 import { getRequestErrorMessage } from "@/lib/request-error";
-import { useAuthStore } from "@/stores/auth";
-import { getInfraInfo, type InfraInfo } from "@/shared/common";
+// import { useAuthStore } from "@/stores/auth";
+import { getInfraColor } from "@/shared/common";
 import {
 	useOnboardingStore,
 	type OnboardingPriceKey,
@@ -39,6 +39,7 @@ import { ErrorAlert, ErrorLine } from "@/components/errors";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import * as form from "@/components/form";
+import { InfraTypeBadge } from "@/components/infra-type-badge";
 
 
 
@@ -63,7 +64,7 @@ const PRICE_ITEMS: readonly PriceItem[] = [
 		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
 	},
 	{
-		key: "deposit",
+		key: "jeonse",
 		icon: "💸",
 		label: "전세",
 		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
@@ -75,15 +76,12 @@ const PRICE_ITEMS: readonly PriceItem[] = [
  */
 const SECTION_OPTIONS: SectionOptions[] = [
 	{
-		heading: "선호하는 동네를 선택해 주세요",
-		description: "가입 시 선택한 동네는 변경되지 않아요!",
-		validate: (ctx) => {
-			const parsed = schema.region.safeParse(ctx.selectedRegion.name);
-			return parsed.success ? undefined : parsed.error.issues[0].message;
-		},
+		heading: "선호 동네",
+		description: "추천 받고 싶은 동네를 선택할 수 있어요!",
 		renderOverview: ctx => (
 			<form.RegionField
 				name="overviewRegion"
+				required={false}
 				value={ctx.overviewRegion.name}
 				className="group-data-[invalid=true]:*:data-[slot=input-group]:border-destructive"
 				tabIndex={-1}
@@ -94,6 +92,7 @@ const SECTION_OPTIONS: SectionOptions[] = [
 			<div>
 				<form.RegionField
 					name="region"
+					required={false}
 					value={ctx.selectedRegion.name}
 					onChange={ctx.handleRegionInputChange}
 					onClear={ctx.handleRegionInputClear}
@@ -111,6 +110,7 @@ const SECTION_OPTIONS: SectionOptions[] = [
 		),
 	},
 	{
+		required: true,
 		heading: "🏗️ 생활 인프라 (1개 이상)",
 		description: "선택한 순서대로 우선순위가 정해져요!",
 		validate: ctx => (ctx.numberOfSelectedInfra ? undefined : "인프라를 1개 이상 선택해 주세요!"),
@@ -118,19 +118,9 @@ const SECTION_OPTIONS: SectionOptions[] = [
 			<div className="rounded-2xl border bg-secondary p-4 shadow-md space-y-3 transition-colors group-data-[invalid=true]:border-destructive">
 				<h3 className="text-sm font-bold">인프라 우선순위</h3>
 				<ol className="rounded-xl flex flex-wrap gap-2 justify-center-safe">
-					{ctx.infraStateItems.filter(x => x.order).sort((a, b) => a.order! - b.order!).map(({ icon, typeName, color }, idx) => (
-						<li
-							key={typeName}
-							className="flex justify-center-safe rounded-xl border border-(--c) bg-(--c)/5 px-3 py-2 text-sm font-medium"
-							style={{
-								"--c": color,
-							} as React.CSSProperties}
-						>
-							<span
-								className="inline-flex justify-center items-center size-6 rounded-full bg-(--c) mr-1 text-white"
-								children={idx + 1}
-							/>
-							<span>{icon} {typeName}</span>
+					{ctx.infraStateItems.filter(x => x.order).sort((a, b) => a.order! - b.order!).map((props) => (
+						<li key={props.order}>
+							<InfraTypeBadge {...props}/>
 						</li>
 					))}
 					{!ctx.numberOfSelectedInfra && (
@@ -146,14 +136,14 @@ const SECTION_OPTIONS: SectionOptions[] = [
 			<div className="grid grid-cols-2 gap-4">
 				{ctx.infraStateItems.map(infra => (
 					<Card
-						key={infra.typeName}
-						icon={infra.icon}
-						typeName={infra.typeName}
+						key={infra.type}
+						emoji={infra.emoji}
+						label={infra.label}
 						description={infra.description}
 						color={infra.color}
 						order={infra.order}
 						checked={!!infra.order}
-						onCheckChange={checked => ctx.handleCardToggle(infra.typeName, checked)}
+						onCheckChange={checked => ctx.handleCardToggle(infra.label, checked)}
 					/>
 				))}
 			</div>
@@ -279,8 +269,9 @@ const SECTION_OPTIONS: SectionOptions[] = [
 /**
  * 인프라 백엔드에서 받아온 정보와 공통 정보 스키마를 합친 타입
  */
-interface InfraInfoItem extends InfraInfo {
+interface InfraInfoItem extends schema.InfraTypeItem {
 	order?: number;
+	color?: string;
 }
 
 /**
@@ -324,9 +315,9 @@ interface LocationState {
  * 섹션 렌더링에 필요한 컨텍스트 타입
  */
 interface SectionRenderContext {
-	selectedRegion: schema.Item;
-	overviewRegion: schema.Item;
-	filteredRegionList: schema.Item[];
+	selectedRegion: schema.RegionItem;
+	overviewRegion: schema.RegionItem;
+	filteredRegionList: schema.RegionItem[];
 	infraStateItems: InfraInfoItem[];
 	numberOfSelectedInfra: number;
 	handleRegionInputChange: React.ChangeEventHandler<HTMLInputElement>;
@@ -346,6 +337,7 @@ interface SectionRenderContext {
 interface SectionOptions {
 	heading: string;
 	description: string;
+	required?: boolean;
 	validate?: (ctx: SectionRenderContext) => string | undefined;
 	renderOverview: (ctx: SectionRenderContext) => React.ReactNode;
 	renderChildren: (ctx: SectionRenderContext) => React.ReactNode;
@@ -362,7 +354,7 @@ const createInitialOnboardingPriceState = (): OnboardingPriceState => ({
 		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
 		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
 	},
-	deposit: {
+	jeonse: {
 		enabled: false,
 		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
 		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
@@ -395,9 +387,9 @@ function clonePriceState(source?: OnboardingPriceState): OnboardingPriceState {
 			...state.sale,
 			range: [...state.sale.range] as PriceRange,
 		},
-		deposit: {
-			...state.deposit,
-			range: [...state.deposit.range] as PriceRange,
+		jeonse: {
+			...state.jeonse,
+			range: [...state.jeonse.range] as PriceRange,
 		},
 	};
 }
@@ -406,8 +398,8 @@ function clonePriceState(source?: OnboardingPriceState): OnboardingPriceState {
  * 온보딩 폼 상태를 안전하게 생성하는 함수
  */
 function createOnboardingFormState(
-	region?: schema.Item,
-	infraTypes?: schema.Item[],
+	region?: schema.RegionItem,
+	infraTypes?: schema.InfraTypeItem[],
 	priceState?: OnboardingPriceState,
 ): OnboardingFormState {
 	return {
@@ -450,8 +442,7 @@ function isOnboardingLocationState(state: unknown): state is LocationState {
 /**
  * 인프라 카드 컴포넌트 props 타입
  */
-interface CardProps extends InfraInfo {
-	order?: number;
+interface CardProps extends Omit<InfraInfoItem, "type"> {
 	checked: boolean;
 	onCheckChange: (check: boolean) => void;
 }
@@ -460,8 +451,8 @@ interface CardProps extends InfraInfo {
  * 인프라 선택 카드 컴포넌트
  */
 function Card({
-	icon,
-	typeName,
+	label,
+	emoji,
 	description,
 	color,
 	order,
@@ -473,7 +464,7 @@ function Card({
 			type="button"
 			role="checkbox"
 			aria-checked={checked}
-			aria-label={typeName}
+			aria-label={label}
 			onClick={() => onCheckChange(!checked)}
 			className={cn(
 				"relative transition-colors border-2 rounded-2xl shadow-md",
@@ -486,8 +477,8 @@ function Card({
 				className="empty:hidden absolute top-2 right-2 bg-(--c)/80 size-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
 				children={order}
 			/>
-			<div className="text-3xl">{icon}</div>
-			<h3 className="font-semibold">{typeName}</h3>
+			<div className="text-3xl">{emoji}</div>
+			<h3 className="font-semibold">{label}</h3>
 			<p className="text-sm text-muted-foreground">{description}</p>
 		</button>
 	);
@@ -500,7 +491,7 @@ function Card({
  */
 export function OnboardingPage() {
 	const formId = "onboarding-form";
-	const { regionName: defaultRegionName } = useAuthStore();
+	// const { regionName: defaultRegionName } = useAuthStore();
 	const regionsStore = useRegionsStore();
 	const infraTypesStore = useInfraTypesStore();
 
@@ -509,14 +500,12 @@ export function OnboardingPage() {
 	const infraTypesItems = infraTypesStore.items;
 	const infraTypesMap = infraTypesStore.getMap();
 	const {
-		region: storedRegion = regionMap.get(defaultRegionName ?? ""),
+		region: storedRegion = undefined,
 		infraTypes: storedInfraTypes = [],
 		priceState: storedPriceState = createInitialOnboardingPriceState(),
 		set: setOnboarding,
 		reset: resetOnboarding,
 	} = useOnboardingStore();
-
-	// const infraInfoItems = infraTypesItems.map(({ name }) => getInfraInfo(name));
 
 	/**
 	 * 편집 종료 후 포커스를 되돌릴 섹션 인덱스 ref
@@ -546,6 +535,18 @@ export function OnboardingPage() {
 		storedPriceState,
 	));
 
+	if (
+		storedRegion
+		&& (
+			committedState.region?.id !== storedRegion.id
+			|| committedState.infraTypes.length !== storedInfraTypes.length
+		)
+	) {
+		const nextState = createOnboardingFormState(storedRegion, storedInfraTypes, storedPriceState);
+		setCommittedState(nextState);
+		setDraftState(createOnboardingFormState(nextState.region, nextState.infraTypes, nextState.priceState));
+	}
+
 	useEffect(() => {
 		regionsStore.fetch();
 	}, [regionsStore]);
@@ -553,20 +554,6 @@ export function OnboardingPage() {
 	useEffect(() => {
 		infraTypesStore.fetch();
 	}, [infraTypesStore]);
-
-	useEffect(() => {
-		if (!storedRegion) return;
-
-		if (
-			committedState.region?.id === storedRegion.id
-			&& committedState.region?.name === storedRegion.name
-			&& committedState.infraTypes.length === storedInfraTypes.length
-		) return;
-
-		const next = createOnboardingFormState(storedRegion, storedInfraTypes, storedPriceState);
-		setCommittedState(next);
-		setDraftState(createOnboardingFormState(next.region, next.infraTypes, next.priceState));
-	}, [storedRegion, storedInfraTypes, storedPriceState, committedState]);
 
 	const getRegionItem = useCallback(
 		(name: string) => regionMap.get(name) ?? { id: 0, name },
@@ -695,12 +682,12 @@ export function OnboardingPage() {
 
 	const infraStateItems = useMemo(() => {
 		return infraTypesItems.map(infra => {
-			const info = getInfraInfo(infra.name);
-			const infraTypeId = infraTypesMap.get(infra.name)!.id;
-			const order = selectedInfraTypes.findIndex(selected => selected.id === infra.id);
+			const color = getInfraColor(infra.type);
+			const infraTypeId = infraTypesMap.get(infra.label)!.type;
+			const order = selectedInfraTypes.findIndex(selected => selected.type === infra.type);
 			return {
 				...infra,
-				...info,
+				color: color,
 				id: infraTypeId,
 				order: order >= 0 ? order + 1 : undefined,
 			};
@@ -712,7 +699,7 @@ export function OnboardingPage() {
 			return {
 				...prev,
 				infraTypes: !checked
-					? prev.infraTypes.filter(value => value.name !== typeName)
+					? prev.infraTypes.filter(value => value.label !== typeName)
 					: [...prev.infraTypes, infraTypesMap.get(typeName)!],
 			};
 		});
@@ -784,7 +771,7 @@ export function OnboardingPage() {
 
 	const handleResetClick = useCallback(() => {
 		const initialState = createOnboardingFormState(
-			getRegionItem(defaultRegionName ?? ""),
+			getRegionItem(""),
 			[],
 			createInitialOnboardingPriceState(),
 		);
@@ -800,7 +787,7 @@ export function OnboardingPage() {
 		setEditorErrorMessages([]);
 		setRequestErrorMessage("");
 		closeEditor();
-	}, [closeEditor, getRegionItem, defaultRegionName, resetOnboarding]);
+	}, [closeEditor, getRegionItem, resetOnboarding]); // defaultRegionName
 
 	const handleSaveClick = useCallback(() => {
 		if (currSection < 0) return;
@@ -861,10 +848,11 @@ export function OnboardingPage() {
 
 		try {
 			const response = await createRecommendation({
-				regionId: committedState.region.id,
-				infrastructureTypeIds: committedState.infraTypes.map(infra => infra.id),
+				// name: undefined,  / 입력란 추가?
+				regionId: committedState.region.id || null,
+				infrastructureTypes: committedState.infraTypes.map(infra => infra.type),
 				salePrice: priceStateToRequestSchema(committedState.priceState.sale),
-				depositPrice: priceStateToRequestSchema(committedState.priceState.deposit),
+				jeonsePrice: priceStateToRequestSchema(committedState.priceState.jeonse),
 			});
 
 			resetOnboarding();
@@ -912,13 +900,25 @@ export function OnboardingPage() {
 								className="relative group"
 								data-invalid={!!overviewErrorMessages[idx]}
 							>
+								{opts.required && (
+									<span
+										className={cn(
+											"block px-2 py-1 text-sm text-muted-foreground font-medium",
+											overviewErrorMessages[idx] && "text-destructive",
+										)}
+										children="* 필수"
+									/>
+								)}
 								<Button
 									ref={node => {
 										overviewEditButtonRefs.current[idx] = node;
 									}}
 									type="button"
 									variant="ghost"
-									className="absolute z-999 top-2 right-2 text-xs font-medium text-muted-foreground"
+									className={cn(
+										"absolute z-999 right-2 text-xs font-medium text-muted-foreground",
+										opts.required ? "top-8" : "top-2",
+									)}
 									onClick={() => handleEditClick(idx)}
 									children="수정"
 								/>

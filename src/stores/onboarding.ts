@@ -34,8 +34,8 @@ export type OnboardingPriceState = Record<PriceKey, OnboardingPriceSelection>;
  * 사용자 선호 데이터
  */
 export interface OnboardingPayload {
-	region?: schema.Item;
-	infraTypes?: schema.Item[];
+	region?: schema.RegionItem;
+	infraTypes?: schema.InfraTypeItem[];
 	priceState?: OnboardingPriceState;
 }
 

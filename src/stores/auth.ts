@@ -20,26 +20,21 @@ export const useAuthStore = create<AuthState>()(persist(set => ({
 	set: ({
 		cuid,
 		name,
-		regionName,
 	}) => set({
 		cuid,
 		name,
-		regionName,
 	}),
 	clear: () => set({
 		cuid: undefined,
 		name: undefined,
-		regionName: undefined,
 	}),
 }), {
 	name: "auth-profile",
 	partialize: ({
 		cuid,
 		name,
-		regionName,
 	}) => ({
 		cuid,
 		name,
-		regionName,
 	}),
 }));

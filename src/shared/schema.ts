@@ -2,9 +2,12 @@ import z from "zod";
 
 
 
-export type Item = z.infer<typeof item>;
+export type ErrorCode = z.infer<typeof ERROR_CODE>;
 export type HealthCheckOutput = z.infer<typeof healthCheckOutput>;
-export type GetItemsOutput = z.infer<typeof getItemsOutput>;
+export type RegionItem = z.infer<typeof regionItem>;
+export type InfraTypeItem = z.infer<typeof infraTypeItem>;
+export type GetRegionsOutput = z.infer<typeof getRegionsOutput>;
+export type GetInfraTypeOutput = z.infer<typeof getInfraTypeOutput>;
 export type SignUpInput = z.infer<typeof signUpInput>;
 export type LoginInput = z.infer<typeof loginInput>;
 export type UserInfoUpdateInput = z.infer<typeof userInfoUpdateInput>;
@@ -37,13 +40,17 @@ export const email = nonEmptyString.pipe(z.email("유효하지 않은 이메일 
 export const password = nonEmptyString.min(4, "비밀번호는 최소 4자 이상이어야 해요");
 export const datetime = z.coerce.date();
 
-/**
- * pk-name 쌍
- */
-export const item = z.object({
-	id: nonNegativeInt,
-	name: nonEmptyString,
-});
+
+
+export const ERROR_CODE = z.enum([
+	"DUPLICATE_EMAIL",
+	"AUTHENTICATION_REQUIRED",
+	"FORBIDDEN",
+	"INVALID_CREDENTIALS",
+	"REGION_ERROR",
+	"INFRASTRUCTURE_TYPE_ERROR",
+	"TASK_ID_TOO_SHORT",
+]);
 
 
 
@@ -57,11 +64,37 @@ export const healthCheckOutput = z.object({
 
 
 /**
- * 지역, 인프라 유형 목록 응답 구조
+ * 지역 item
  */
-export const getItemsOutput = z.object({
+export const regionItem = z.object({
+	id: nonNegativeInt,
+	name: nonEmptyString,
+});
+
+/**
+ * 인프라 유형 item
+ */
+export const infraTypeItem = z.object({
+	type: nonEmptyString,
+	emoji: nonEmptyString,
+	label: nonEmptyString,
+	description: nonEmptyString,
+});
+
+/**
+ * 지역 목록 응답 구조
+ */
+export const getRegionsOutput = z.object({
 	total: nonNegativeInt,
-	items: item.array(),
+	items: regionItem.array(),
+});
+
+/**
+ * 인프라 유형 목록 응답 구조
+ */
+export const getInfraTypeOutput = z.object({
+	total: nonNegativeInt,
+	items: infraTypeItem.array(),
 });
 
 
@@ -74,8 +107,6 @@ export const userInfoOutput = z.object({
 	cuid: nonEmptyString,
 	name: nonEmptyString,
 	email,
-	regionId: nonNegativeInt.nullable(),
-	regionName: nonEmptyString.nullable(),
 	createdAt: datetime,
 });
 
@@ -92,8 +123,7 @@ export const authCheckOutput = z.object({
  */
 export const signUpInput = z.object({
 	email, password,
-	name: nonEmptyString,
-	regionId: nonNegativeInt.nullable().optional(),
+	name: nonEmptyString.nullable(),
 });
 
 /**
@@ -109,7 +139,6 @@ export const loginInput = z.object({
 export const userInfoUpdateInput = signUpInput.pick({
 	name: true,
 	email: true,
-	regionId: true,
 }).partial();
 
 /**
@@ -140,10 +169,10 @@ export const priceRange = z.object({
  */
 export const requestData = z.object({
 	name: nonEmptyString.nullable(),
-	region: nonEmptyString,
+	region: nonEmptyString.nullable(),
 	infrastructureTypes: nonEmptyString.array(),
 	salePrice: priceRange.nullable(),
-	depositPrice: priceRange.nullable(),
+	jeonsePrice: priceRange.nullable(),
 });
 
 /**
@@ -166,6 +195,7 @@ export const coordinate = z.object({
  * 주소 정보
  */
 export const address = coordinate.extend({
+	region: nonEmptyString,
 	landLot: nonEmptyString,
 	roadName: nonEmptyString.nullable(),
 });
@@ -198,7 +228,7 @@ export const recommendationPropertySummary = z.object({
 	score: nonNegativeFloat,
 	address,
 	salePrice: nonNegativeInt.nullable(),
-	depositPrice: nonNegativeInt.nullable(),
+	jeonsePrice: nonNegativeInt.nullable(),
 	infrastructure: infraSummary.array().max(2),
 });
 
@@ -213,18 +243,18 @@ export const userRecommendationsOutput = z.object({
 });
 
 /**
- * 추천 요청 생성 입력
+ * 추천 생성 요청
  */
 export const recommendationCreateInput = z.object({
 	name: nonEmptyString.optional(),
-	regionId: nonNegativeInt,
-	infrastructureTypeIds: nonNegativeInt.array(),
+	regionId: nonNegativeInt.nullable(),
+	infrastructureTypes: nonEmptyString.array(),
 	salePrice: priceRange.nullable().optional(),
-	depositPrice: priceRange.nullable().optional(),
+	jeonsePrice: priceRange.nullable().optional(),
 });
 
 /**
- * 추천 요청 생성 응답
+ * 추천 생성 요청 응답
  */
 export const recommendationCreateOutput = z.object({
 	taskId: nonEmptyString,
@@ -232,7 +262,7 @@ export const recommendationCreateOutput = z.object({
 });
 
 /**
- * 추천 요청 결과에 대한 요약 정보 응답
+ * 추천 결과에 대한 요약 정보 응답
  */
 export const recommendationSummaryOutput = recommendationCreateOutput.safeExtend({
 	total: nonNegativeInt.nullable(),
@@ -241,7 +271,7 @@ export const recommendationSummaryOutput = recommendationCreateOutput.safeExtend
 });
 
 /**
- * 추천 요청 결과 내 매물에 대한 상세 정보 응답
+ * 추천 결과 내 매물에 대한 상세 정보 응답
  */
 export const recommendationPropertyDetailOutput = recommendationPropertySummary.extend({
 	infrastructure: infraDetail.array(),

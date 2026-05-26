@@ -98,7 +98,10 @@ function SignPageContent({ mode }: SignPageProps) {
 	const setAuth = useAuthStore((s) => s.set);
 
 	const accountFields = useMemo<AccountFormFieldOptions>(() => ({
-		name: !isLoginPage,
+		name: {
+			enabled: !isLoginPage,
+			required: false,
+		},
 		email: true,
 		currentPassword: isLoginPage,
 		newPassword: {
@@ -110,7 +113,7 @@ function SignPageContent({ mode }: SignPageProps) {
 			label: "비밀번호 확인",
 		},
 		region: {
-			enabled: !isLoginPage,
+			enabled: false,
 			required: false,
 		},
 	}), [isLoginPage]);
@@ -141,7 +144,6 @@ function SignPageContent({ mode }: SignPageProps) {
 					name: formValues.name,
 					email: formValues.email,
 					password,
-					regionId: formValues.region.id || undefined,
 				});
 			}
 
