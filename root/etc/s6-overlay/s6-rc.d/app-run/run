@@ -6,8 +6,11 @@ cd /app
 
 SUCCESS "**** Starting app ****"
 
-if [ "$MODE" != "production" ]; then
+if [ "$MODE" == "local" ]; then
 	exec s6-setuidgid abc pnpm run dev --host 0.0.0.0
 else
+	if [ "$MODE" != "production" ]; then
+		s6-setuidgid abc pnpm run build
+	fi
 	exec s6-setuidgid abc npm run start
 fi

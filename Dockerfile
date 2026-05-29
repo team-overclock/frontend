@@ -40,9 +40,14 @@ COPY src ./src
 
 
 # 운영용: 종속성 설치 및 빌드
-FROM base-pnpm AS prod-build
+FROM base-pnpm AS deploy-env
 ARG VITE_BACKEND_URL
 ARG VITE_KAKAO_MAP_API_KEY
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+ENV VITE_KAKAO_MAP_API_KEY=$VITE_KAKAO_MAP_API_KEY
+
+# 운영용: 종속성 설치 및 빌드
+FROM deploy-env AS prod-build
 COPY package.json pnpm-*.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY --from=source-files / /
@@ -60,7 +65,7 @@ RUN npm install -g serve
 WORKDIR /app
 
 # 개발용: main 브랜치 push 시 자동 배포되는 이미지
-FROM base-pnpm AS dev
+FROM deploy-env AS dev
 ENV MODE=development
 COPY --from=common-files / /
 COPY --from=source-files / /
