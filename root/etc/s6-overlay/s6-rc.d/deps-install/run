@@ -1,14 +1,19 @@
 #!/usr/bin/with-contenv bash
 
+source "/app/scripts/functions.sh"
+
 cd /app
 
+if [ "$MODE" == "production" ]; then
+	exit 0
+fi
+
 if [ ! -f "package.json" ]; then
-	echo "Error: package.json not found" >&2
+	ERROR "Error: package.json not found" >&2
 	exit 1
 fi
 
-if [ "$MODE" != "production" ]; then
-	echo "**** Installing dependencies... ****"
 
-	s6-setuidgid abc pnpm install --frozen-lockfile --ignore-scripts --store-dir $PNPM_HOME/.store
-fi
+
+SUCCESS "**** Installing dependencies... ****"
+s6-setuidgid abc pnpm install --frozen-lockfile

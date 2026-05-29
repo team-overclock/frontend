@@ -3,53 +3,71 @@
 # 공통: node
 FROM ghcr.io/linuxserver/baseimage-alpine:3.23 AS base-node
 
-RUN apk add --no-cache nodejs npm
+LABEL org.opencontainers.image.base.name="ghcr.io/linuxserver/baseimage-alpine:3.23"
 
+ENV HOME="/config"
 ENV PUID=1000
 ENV PGID=1000
-COPY root/ /
-WORKDIR /app
+VOLUME /app/node_modules
 
-# 공통: pnpm
+RUN apk add --no-cache nodejs npm
+
+WORKDIR /defaults
+
+# 공통: pnpm 구성
 FROM base-node AS base-pnpm
-
-# pnpm 구성
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-ENV HOME="/config"
 ENV COREPACK_HOME="/config/.corepack"
 ENV PNPM_HOME="/config/.pnpm-home"
 ENV PATH="$PNPM_HOME:$PATH"
-
 RUN npm install -g corepack && corepack enable
 
 
 
-# 운영용 이미지
-FROM base-pnpm AS prod-deps
+# 배포용 파일 사전 복사
 
-# 운영용: 종속성 설치
+FROM scratch AS common-files
+WORKDIR /defaults
+COPY root/ /
+COPY scripts/ ./scripts
+
+FROM scratch AS source-files
+WORKDIR /defaults
 COPY package.json pnpm-*.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+COPY tsconfig*.json vite.config.ts index.html ./
+COPY src ./src
 
-# 운영용: 빌드
+
+
+# 운영용: 종속성 설치 및 빌드
 FROM base-pnpm AS prod-build
 ARG VITE_BACKEND_URL
 ARG VITE_KAKAO_MAP_API_KEY
-COPY --from=prod-deps /app/node_modules /app/node_modules
-COPY package.json pnpm-lock.yaml ./
-COPY tsconfig*.json vite.config.ts index.html ./
-COPY src ./src
+COPY package.json pnpm-*.yaml ./
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+COPY --from=source-files / /
 RUN pnpm run build
 
-# 운영용: 메인
+
+
+# 운영용
 FROM base-node AS prod
 ENV MODE=production
-COPY --from=prod-build /app/dist ./dist
+COPY --from=prod-build /defaults/dist ./dist
+COPY --from=common-files / /
 COPY package.json ./
 RUN npm install -g serve
+WORKDIR /app
 
-
-
-# 개발용 이미지
+# 개발용: main 브랜치 push 시 자동 배포되는 이미지
 FROM base-pnpm AS dev
 ENV MODE=development
+COPY --from=common-files / /
+COPY --from=source-files / /
+WORKDIR /app
+
+# 로컬 개발용 이미지
+FROM base-pnpm AS local
+ENV MODE=local
+COPY root/ /
+WORKDIR /app
