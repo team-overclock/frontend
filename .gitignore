@@ -29,3 +29,6 @@ dist-ssr
 
 # empty directory
 !**/.empty
+
+# docker
+.pnpm-store

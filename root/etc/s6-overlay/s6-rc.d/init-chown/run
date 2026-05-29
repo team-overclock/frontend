@@ -1,5 +1,7 @@
 #!/usr/bin/with-contenv bash
 
-if [ "$MODE" != "production" ]; then
-	lsiown abc:abc /app/node_modules
+if [ "$MODE" != "local" ]; then
+	chown abc:abc -R "/app"
+else
+	chown abc:abc -R "/app/node_modules"
 fi
