@@ -123,7 +123,6 @@ function SignPageContent({ mode }: SignPageProps) {
 	const {
 		 data: {
 			isLoggedIn = false,
-			user: userInfo = null,
 		 } = {},
 	} = useUserQuery();
 	const navigate = useNavigate();
@@ -167,10 +166,8 @@ function SignPageContent({ mode }: SignPageProps) {
 	}, [setRequestErrorMessage, isLoginPage, navigate, loginMutation, signUpMutation]);
 
 	useEffect(() => {
-		if (isLoggedIn && userInfo) {
-			setAuth(userInfo);
-		}
-	}, [isLoggedIn, userInfo, setAuth]);
+		setAuth({ isLoggedIn: isLoggedIn });
+	}, [isLoggedIn, setAuth]);
 
 	if (isLoggedIn) {
 		return <Navigate to={DEFAULT_PAGE.LOGGED_IN} replace/>;

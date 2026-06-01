@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { ROUTES } from "@/shared/routes";
 import { useLogoutMutation, useUserQuery, useUpdatePasswordMutation, useUpdateProfileInfoMutation } from "@/hooks/auth";
 // import { useRegionsStore } from "@/stores/items";
-import { useAuthStore } from "@/stores/auth";
 import { getRequestErrorMessage } from "@/lib/request-error";
 
 import { AccountForm, type AccountFormProps, type AccountFormFieldOptions } from "@/components/account-form";
@@ -83,7 +82,6 @@ export function SettingsPage() {
 	const updateProfileInfoMutation = useUpdateProfileInfoMutation();
 	const updatePasswordMutation = useUpdatePasswordMutation();
 	// const regionsStore = useRegionsStore();
-	const { set: setProfile } = useAuthStore();
 	const {
 		data: {
 			user = null,
@@ -223,21 +221,14 @@ export function SettingsPage() {
 		}
 
 		try {
-			const updatedProfile = await updateProfileInfoMutation.mutateAsync({
+			await updateProfileInfoMutation.mutateAsync({
 				name,
-				// regionId: regionNames.get(region)?.id,
-			});
-
-			setProfile({
-				cuid: updatedProfile.cuid,
-				name: updatedProfile.name,
-				// regionName: updatedProfile.regionName,
 			});
 			setIsInfoSuccess(true);
 		} catch (error) {
 			setInfoRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [storedName, storedRegionName, setProfile, updateProfileInfoMutation]);
+	}, [storedName, storedRegionName, updateProfileInfoMutation]);
 
 	const handlePasswordSubmit = useCallback<AccountFormProps["onSubmit"]>(async (_, formValues) => {
 		setPasswordRequestErrorMessage("");

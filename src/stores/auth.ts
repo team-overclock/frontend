@@ -1,12 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import type { UserInfoOutput } from "@/shared/schema";
 
 
-
-type AuthStateField = Extract<keyof UserInfoOutput, "cuid" | "name" | "regionName">;
-type AuthStateData = Pick<UserInfoOutput, AuthStateField>;
+interface AuthStateData {
+	isLoggedIn: boolean;
+}
 
 interface AuthState extends Partial<AuthStateData> {
 	set: (data: AuthStateData) => void;
@@ -18,23 +17,18 @@ interface AuthState extends Partial<AuthStateData> {
  */
 export const useAuthStore = create<AuthState>()(persist(set => ({
 	set: ({
-		cuid,
-		name,
+		isLoggedIn,
 	}) => set({
-		cuid,
-		name,
+		isLoggedIn,
 	}),
 	clear: () => set({
-		cuid: undefined,
-		name: undefined,
+		isLoggedIn: undefined,
 	}),
 }), {
 	name: "auth-profile",
 	partialize: ({
-		cuid,
-		name,
+		isLoggedIn,
 	}) => ({
-		cuid,
-		name,
+		isLoggedIn,
 	}),
 }));

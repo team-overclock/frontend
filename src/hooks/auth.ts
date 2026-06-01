@@ -44,9 +44,9 @@ export function useLoginMutation() {
 
 	return useMutation({
 		mutationFn: login,
-		onSuccess: async (userInfo) => {
-			authStore.set(userInfo);
-			await queryClient.removeQueries({ queryKey: authQueryKeys.all });
+		onSuccess: () => {
+			authStore.set({ isLoggedIn: true });
+			queryClient.removeQueries({ queryKey: authQueryKeys.all });
 		},
 	});
 }
@@ -60,9 +60,9 @@ export function useGuestLoginMutation() {
 
 	return useMutation({
 		mutationFn: guestLogin,
-		onSuccess: async (userInfo) => {
-			authStore.set(userInfo);
-			await queryClient.removeQueries({ queryKey: authQueryKeys.all });
+		onSuccess: () => {
+			authStore.set({ isLoggedIn: true });
+			queryClient.removeQueries({ queryKey: authQueryKeys.all });
 		},
 	});
 }
@@ -76,7 +76,7 @@ export function useLogoutMutation() {
 
 	return useMutation({
 		mutationFn: logout,
-		onSuccess: async () => {
+		onSuccess: () => {
 			authStore.clear();
 			queryClient.removeQueries({ queryKey: authQueryKeys.all });
 		},
