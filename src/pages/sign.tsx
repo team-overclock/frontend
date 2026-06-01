@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { NavLink, Navigate, useNavigate } from "react-router";
+import { NavLink, Navigate, useNavigate, useLocation } from "react-router";
 
 import { cn } from "@/lib/utils";
 import { DEFAULT_PAGE, ROUTES } from "@/shared/routes";
@@ -78,6 +78,14 @@ function Header({ icon, title, subtitle, badges, className, ...props }: HeaderPr
 
 
 
+/**
+ * 이 페이지에 들어온 경로를 설정할 수 있음
+ * 설정 시 회원가입/로그인 성공 시 설정된 경로로 이동함
+ */
+export interface SignPageLocationState {
+	from?: string;
+}
+
 export interface SignPageProps {
 	/**
 	 * 로그인, 회원가입 중 어떤 화면을 띄울지 결정하는 모드 값
@@ -93,6 +101,8 @@ export function SignPage({ mode }: SignPageProps) {
 }
 
 function SignPageContent({ mode }: SignPageProps) {
+	const locationState = useLocation().state as SignPageLocationState | null;
+
 	const isLoginPage = mode === "sign-in";
 	const formId = "sign-form";
 	const setAuth = useAuthStore((s) => s.set);
@@ -159,18 +169,21 @@ function SignPageContent({ mode }: SignPageProps) {
 				nextPage = ROUTES.SIGN_IN;
 			}
 
-			navigate(nextPage, { replace: true });
+			navigate(locationState?.from || nextPage, { replace: true });
 		} catch (error) {
 			setRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [setRequestErrorMessage, isLoginPage, navigate, loginMutation, signUpMutation]);
+	}, [setRequestErrorMessage, isLoginPage, locationState?.from, navigate, loginMutation, signUpMutation]);
 
 	useEffect(() => {
 		setAuth({ isLoggedIn: isLoggedIn });
 	}, [isLoggedIn, setAuth]);
 
 	if (isLoggedIn) {
-		return <Navigate to={DEFAULT_PAGE.LOGGED_IN} replace/>;
+		return <Navigate
+			to={locationState?.from || DEFAULT_PAGE.LOGGED_IN}
+			replace
+		/>;
 	}
 
 	return (
@@ -187,7 +200,7 @@ function SignPageContent({ mode }: SignPageProps) {
 					variant="default"
 					className="px-5 py-4 rounded-full font-bold text-base shadow-md"
 					children="게스트 로그인"
-					to={DEFAULT_PAGE.LOGGED_IN}
+					to={locationState?.from || DEFAULT_PAGE.LOGGED_IN}
 				/>
 			</div>
 			<AccountForm

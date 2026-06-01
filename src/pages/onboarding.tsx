@@ -307,7 +307,7 @@ interface OnboardingFormState extends Required<OnboardingPayload> {
 /**
  * 편집 화면을 overview를 통해 들어갔는지 판별하기 위한 라우터 상태 타입
  */
-interface LocationState {
+interface OnboardingPPageLocationState {
 	editingFromOnboarding: true;
 }
 
@@ -430,7 +430,7 @@ function parseSectionFromSearchParam(value: string | null): number {
  *
  * @param state location.state
  */
-function isOnboardingLocationState(state: unknown): state is LocationState {
+function isOnboardingLocationState(state: unknown): state is OnboardingPPageLocationState {
 	return !!state
 		&& typeof state === "object"
 		&& "editingFromOnboarding" in state
@@ -580,7 +580,7 @@ export function OnboardingPage() {
 				search: `?${nextParams.toString()}`,
 			},
 			{
-				state: { editingFromOnboarding: true } satisfies LocationState,
+				state: { editingFromOnboarding: true } satisfies OnboardingPPageLocationState,
 			},
 		);
 	}, [location.pathname, navigate, searchParams]);
