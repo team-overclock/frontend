@@ -3,6 +3,9 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { ROUTES, DEFAULT_PAGE } from "@/shared/routes";
 
 import { RootLayout } from "@/layouts/RootLayout";
+import { LocalAuthLayout } from "@/layouts/LocalAuthLayout";
+import { ServerAuthLayout } from "@/layouts/ServerAuthLayout";
+
 import { HomePage } from "@/pages/home";
 import { RecommendationPage } from "@/pages/recommendation";
 import { OnboardingPage } from "@/pages/onboarding";
@@ -27,24 +30,34 @@ export const router = createBrowserRouter([
 				element: <HomePage/>
 			},
 			{
-				path: ROUTES.ONBOARDING,
-				element: <OnboardingPage/>
-			},
-			{
-				path: ROUTES.RECOMMENDATION,
-				element: <RecommendationPage/>
-			},
-			{
-				path: ROUTES.SETTINGS,
-				element: <SettingsPage/>
-			},
-			{
 				path: ROUTES.SIGN_IN,
 				element: <SignPage mode="sign-in"/>
 			},
 			{
 				path: ROUTES.SIGN_UP,
 				element: <SignPage mode="sign-up"/>
+			},
+			{
+				element: <LocalAuthLayout/>,
+				children: [
+				],
+			},
+			{
+				element: <ServerAuthLayout/>,
+				children: [
+					{
+						path: ROUTES.ONBOARDING,
+						element: <OnboardingPage/>
+					},
+					{
+						path: ROUTES.RECOMMENDATION,
+						element: <RecommendationPage/>
+					},
+					{
+						path: ROUTES.SETTINGS,
+						element: <SettingsPage/>
+					},
+				],
 			},
 			{
 				path: "*",

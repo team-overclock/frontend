@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { loginCheck, signUp, login, guestLogin, logout, updateUserInfo, updateUserPassword } from "@/lib/api";
@@ -18,12 +19,21 @@ export const authQueryKeys = {
  * 로그인 상태 조회 쿼리
  */
 export function useUserQuery() {
-	return useQuery({
+	const authStore = useAuthStore();
+	const result = useQuery({
 		queryKey: authQueryKeys.check,
 		queryFn: loginCheck,
 		staleTime: 1000 * 60 * 5,
 		retry: false,
 	});
+
+	useEffect(() => {
+		if (result.data?.isLoggedIn && !authStore.isLoggedIn) {
+			authStore.set({ isLoggedIn: true });
+		}
+	}, [result.data?.isLoggedIn, authStore]);
+
+	return result;
 }
 
 /**

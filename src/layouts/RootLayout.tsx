@@ -1,7 +1,4 @@
-import { Outlet, Navigate, useLocation } from "react-router";
-
-import { DEFAULT_PAGE, ROUTES } from "@/shared/routes";
-import { useAuthStore } from "@/stores/auth";
+import { Outlet } from "react-router";
 
 
 
@@ -11,13 +8,6 @@ import { useAuthStore } from "@/stores/auth";
  * - 매칭된 하위 라우트는 `Outlet` 위치에 렌더링 됨
  */
 export function RootLayout() {
-	const { pathname } = useLocation();
-	const authStore = useAuthStore();
-
-	if (!authStore.cuid && !pathname.startsWith(ROUTES.SIGN_UP) && !pathname.startsWith(ROUTES.SIGN_IN)) {
-		return <Navigate to={DEFAULT_PAGE.NOT_LOGGED_IN} replace/>
-	}
-
 	return (
 		<>
 			<Outlet/>

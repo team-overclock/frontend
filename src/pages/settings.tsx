@@ -4,13 +4,15 @@ import { CheckCheckIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/shared/routes";
-import { useLogoutMutation, useUserQuery, useUpdatePasswordMutation, useUpdateProfileInfoMutation } from "@/hooks/auth";
+import { useLogoutMutation, useUpdatePasswordMutation, useUpdateProfileInfoMutation } from "@/hooks/auth";
+import { useServerAuthLayoutContext } from "@/hooks/use-layout-context";
 // import { useRegionsStore } from "@/stores/items";
 import { getRequestErrorMessage } from "@/lib/request-error";
 
 import { AccountForm, type AccountFormProps, type AccountFormFieldOptions } from "@/components/account-form";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
+
 
 
 /**
@@ -81,22 +83,18 @@ export function SettingsPage() {
 	const logoutMutation = useLogoutMutation();
 	const updateProfileInfoMutation = useUpdateProfileInfoMutation();
 	const updatePasswordMutation = useUpdatePasswordMutation();
+	const { user } = useServerAuthLayoutContext();
 	// const regionsStore = useRegionsStore();
-	const {
-		data: {
-			user = null,
-		} = {},
-	} = useUserQuery();
 
 	// const regionNames = regionsStore.getMap();
 
 	const {
-		name: storedName = "",
-		email: storedEmail = "",
+		name: storedName,
+		email: storedEmail,
 
 		/// @ts-expect-error: ts(2339)
 		regionName: storedRegionName = "",
-	} = user ?? {};
+	} = user;
 
 	const [isInfoSuccess, setIsInfoSuccess] = useState(false);
 	const [isPasswordSuccess, setIsPasswordSuccess] = useState(false);
