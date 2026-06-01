@@ -1,4 +1,9 @@
 export const MOBILE_BREAKPOINT = 768;
+export const RETRY_DELAY_MS = 1500;
+
+
+
+export const sleep = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
 
 
 

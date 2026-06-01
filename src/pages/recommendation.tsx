@@ -6,6 +6,7 @@ import { useKakaoLoader, useMap, Map, MapMarker } from "react-kakao-maps-sdk";
 
 import * as env from "@/shared/env";
 import type * as schema from "@/shared/schema";
+import { RETRY_DELAY_MS, sleep } from "@/shared/common";
 import { cn } from "@/lib/utils";
 import { getRecommendation } from "@/lib/api";
 import { formatPriceUnit } from "@/lib/price-unit";
@@ -41,9 +42,6 @@ type LocalState = "is_pending" ;
 type RecommendationRequestState = LocalState | schema.RecommendationStatus;
 
 const defaultPoint: schema.MapCoordinate = { lat: 33.450701, lng: 126.570667 };
-
-const retryDelayMs = 1500;
-const sleep = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
 
 
 
@@ -462,7 +460,7 @@ export function RecommendationPage() {
 					setRecommendation(null);
 				}
 
-				await sleep(retryDelayMs);
+				await sleep(RETRY_DELAY_MS);
 			}
 		};
 

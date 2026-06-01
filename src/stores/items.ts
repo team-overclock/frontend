@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { RETRY_DELAY_MS, sleep } from "@/shared/common";
 import type * as schema from "@/shared/schema";
 import * as api from "@/lib/api";
 
@@ -39,10 +40,11 @@ function createItemStore<T extends schema.RegionItem | schema.InfraTypeItem>(
 			return cachedMap;
 		},
 		fetch: async () => {
-			const { items, isLoading, updatedAt} = get();
+			const { items, isLoading, updatedAt } = get();
 			if (isLoading) return;
+			const now = Date.now();
 
-			const isStale = items.length === 0 || !updatedAt || (Date.now() - updatedAt > STALE_TIME);
+			const isStale = items.length === 0 || !updatedAt || (now - updatedAt > STALE_TIME);
 			if (!isStale) return;
 
 			set({ isError: false, isLoading: true });
@@ -50,10 +52,11 @@ function createItemStore<T extends schema.RegionItem | schema.InfraTypeItem>(
 				const { items } = await apiFn();
 				set({
 					items,
-					updatedAt: Date.now(),
+					updatedAt: now,
 					isLoading: false,
 				});
 			} catch {
+				await sleep(RETRY_DELAY_MS);
 				set({ isError: true, isLoading: false });
 			}
 		},
