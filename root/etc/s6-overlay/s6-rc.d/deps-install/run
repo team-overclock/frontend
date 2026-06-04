@@ -16,4 +16,4 @@ fi
 
 
 SUCCESS "**** Installing dependencies... ****"
-s6-setuidgid abc pnpm install --frozen-lockfile
+s6-setuidgid abc pnpm install --frozen-lockfile --ignore-scripts --store-dir $PNPM_HOME/.store
