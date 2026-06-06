@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { RETRY_DELAY_MS, sleep } from "@/shared/common";
-import type * as schema from "@/shared/schema";
 import * as api from "@/lib/api";
 
 
@@ -16,28 +15,30 @@ interface ItemState<T> {
 	isError: boolean;
 	isLoading: boolean;
 	updatedAt: number | null;
-	getMap: () => ItemByNameMap<T>;
+	getMap: <K extends keyof T>(key: K) => ReadonlyMap<T[K], T>;
 	fetch: () => Promise<void>;
 	clear: () => void;
 }
 
-function createItemStore<T extends schema.RegionItem | schema.InfraTypeItem>(
+function createItemStore<T>(
 	name: string,
 	apiFn: () => MaybePromise<{ items: T[] }>,
 ) {
-	let lastItems: T[] = [];
-	let cachedMap: ItemByNameMap<T> = new Map();
+	const lastItems: Partial<Record<keyof T, T[]>> = {};
+	const cachedMap: Partial<Record<keyof T, ReadonlyMap<T[keyof T], T>>> = {};
 	return create<ItemState<T>>()(persist((set, get) => ({
 		items: [],
 		isError: false,
 		isLoading: false,
 		updatedAt: null,
-		getMap: () => {
+
+		// @ts-expect-error: ts(2322)
+		getMap: (key) => {
 			const currentItems = get().items;
-			if (lastItems === currentItems) return cachedMap;
-			lastItems = currentItems;
-			cachedMap = new Map(get().items.map(item => ["id" in item ? item.name : item.label, item]));
-			return cachedMap;
+			if (lastItems[key] === currentItems) return cachedMap[key];
+			lastItems[key] = currentItems;
+			cachedMap[key] = new Map(get().items.map(item => [item[key], item]));
+			return cachedMap[key];
 		},
 		fetch: async () => {
 			const { items, isLoading, updatedAt } = get();
@@ -77,8 +78,6 @@ function createItemStore<T extends schema.RegionItem | schema.InfraTypeItem>(
 		}),
 	}));
 }
-
-export type ItemByNameMap<T> = ReadonlyMap<string, T>;
 
 /**
  * 동네 목록을 localStorage에 유지하는 item store.

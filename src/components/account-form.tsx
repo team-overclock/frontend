@@ -2,7 +2,7 @@ import { useRef, useCallback, useEffect, useMemo, useState } from "react";
 
 import * as schema from "@/shared/schema";
 import { cn } from "@/lib/utils";
-import { useRegionsStore, type ItemByNameMap } from "@/stores/items";
+import { useRegionsStore } from "@/stores/items";
 import { filterList } from "@/lib/filter-string-list";
 
 import {
@@ -275,7 +275,7 @@ function omitEnabledFlag<T extends Partial<RegionOptions>>(option: T) {
  * @param fields 정규화된 필드 옵션
  * @returns 폼 초기값
  */
-const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>, regionMap: ItemByNameMap<schema.RegionItem>): AccountFormValues => {
+const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>, regionMap: ReadonlyMap<string, schema.RegionItem>): AccountFormValues => {
 	return {
 		name: fields.name?.defaultValue ?? "",
 		email: fields.email?.defaultValue ?? "",
@@ -292,7 +292,7 @@ const createInitialValues = (fields: Partial<NormalizedAccountFormFieldOptions>,
 function validateForm(
 	values: AccountFormValues,
 	options: Partial<NormalizedAccountFormFieldOptions>,
-	regionMap: ItemByNameMap<schema.RegionItem>,
+	regionMap: ReadonlyMap<string, schema.RegionItem>,
 ): AccountFormErrors {
 	/**
 	 * 필드별 에러 메시지 누적 객체
@@ -314,7 +314,7 @@ function validateForm(
 function validateField<F extends FieldKey>(
 	values: AccountFormValues,
 	options: Partial<NormalizedAccountFormFieldOptions>,
-	regionMap: ItemByNameMap<schema.RegionItem>,
+	regionMap: ReadonlyMap<string, schema.RegionItem>,
 	field: F,
 	value: string,
 	option: NormalizedAccountFormFieldOptions[F] = {},
@@ -392,7 +392,7 @@ export function AccountForm({
 	const regionsStore = useRegionsStore();
 
 	const regionItems = regionsStore.items;
-	const regionMap = regionsStore.getMap();
+	const regionMap = regionsStore.getMap("name");
 
 	/**
 	 * 다이얼로그 닫힘 시 포커스 복원용 ref

@@ -260,7 +260,7 @@ function PropertySummaryBox(p: (
 	}
 )) {
 	const infraTypesStore = useInfraTypesStore();
-	const infraTypesMap = infraTypesStore.getMap();
+	const infraTypesMap = infraTypesStore.getMap("label");
 	return (
 		<article
 			className={cn(
@@ -410,7 +410,7 @@ export function RecommendationPage() {
 	const location = useLocation() as Location<LocationState | undefined>;
 	const [searchParams] = useSearchParams();
 	const taskId = useMemo(() => searchParams.get("task_id") ?? "", [searchParams]);
-	const infraTypesMap = infraTypesStore.getMap();
+	const infraTypesMap = infraTypesStore.getMap("label");
 
 	const [recState, setRecState] = useState<RecommendationRequestState>("is_pending");
 	const [recommendation, setRecommendation] = useState<null | schema.RecommendationSummaryOutput>(null);

@@ -496,9 +496,9 @@ export function OnboardingPage() {
 	const infraTypesStore = useInfraTypesStore();
 
 	const regionItems = regionsStore.items;
-	const regionMap = regionsStore.getMap();
+	const regionMap = regionsStore.getMap("name");
 	const infraTypesItems = infraTypesStore.items;
-	const infraTypesMap = infraTypesStore.getMap();
+	const infraTypesMap = infraTypesStore.getMap("label");
 	const {
 		region: storedRegion = undefined,
 		infraTypes: storedInfraTypes = [],

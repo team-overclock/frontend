@@ -86,7 +86,7 @@ export function SettingsPage() {
 	const { user } = useServerAuthLayoutContext();
 	// const regionsStore = useRegionsStore();
 
-	// const regionNames = regionsStore.getMap();
+	// const regionNames = regionsStore.getMap("name");
 
 	const {
 		name: storedName,
