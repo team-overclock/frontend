@@ -43,6 +43,32 @@ export function getInfraTypes() {
 	});
 }
 
+/**
+ * 학군 유형 목록 조회
+ */
+export function getSchoolDistrictTypes() {
+	return request({
+		guard: {
+			response: schema.getSchoolDistrictTypesOutput,
+		},
+		method: "GET",
+		url: "/school-districts-types",
+	});
+}
+
+/**
+ * 고등학교 목록 조회
+ */
+export function getHighSchools() {
+	return request({
+		guard: {
+			response: schema.getHighSchoolsOutput,
+		},
+		method: "GET",
+		url: "/infrastructures/high-schools",
+	});
+}
+
 
 
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { cn } from "@/lib/utils";
@@ -8,8 +8,20 @@ import type { PriceUnit } from "@/shared/enum";
 import { ROUTES } from "@/shared/routes";
 import * as schema from "@/shared/schema";
 import { createRecommendation } from "@/lib/api";
-import { useRegionsStore, useInfraTypesStore } from "@/stores/items";
+import { useRegionsStore, useInfraTypesStore, useSchoolDistrictTypesStore, useHighSchoolsStore } from "@/stores/items";
 import { filterList } from "@/lib/filter-string-list";
+import {
+	Combobox,
+	ComboboxChips,
+	ComboboxChip,
+	ComboboxChipsInput,
+	ComboboxContent,
+	ComboboxList,
+	ComboboxItem,
+	ComboboxEmpty,
+	ComboboxValue,
+	useComboboxAnchor,
+} from "@/components/ui/combobox";
 import { getRequestErrorMessage } from "@/lib/request-error";
 // import { useAuthStore } from "@/stores/auth";
 import { getInfraColor } from "@/shared/common";
@@ -20,6 +32,15 @@ import {
 	type OnboardingPriceState,
 	type OnboardingPayload,
 } from "@/stores/onboarding";
+
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+} from "@/components/ui/dialog";
 
 import {
 	Select,
@@ -114,40 +135,179 @@ const SECTION_OPTIONS: SectionOptions[] = [
 		heading: "🏗️ 생활 인프라 (1개 이상)",
 		description: "선택한 순서대로 우선순위가 정해져요!",
 		validate: ctx => (ctx.numberOfSelectedInfra ? undefined : "인프라를 1개 이상 선택해 주세요!"),
-		renderOverview: ctx => (
-			<div className="rounded-2xl border bg-secondary p-4 shadow-md space-y-3 transition-colors group-data-[invalid=true]:border-destructive">
-				<h3 className="text-sm font-bold">인프라 우선순위</h3>
-				<ol className="rounded-xl flex flex-wrap gap-2 justify-center-safe">
-					{ctx.infraStateItems.filter(x => x.order).sort((a, b) => a.order! - b.order!).map((props) => (
-						<li key={props.order}>
-							<InfraTypeBadge {...props}/>
-						</li>
-					))}
-					{!ctx.numberOfSelectedInfra && (
-						<li
-							className="text-sm text-muted-foreground"
-							children="아직 인프라를 선택하지 않았어요!"
-						/>
-					)}
-				</ol>
-			</div>
-		),
-		renderChildren: ctx => (
-			<div className="grid grid-cols-2 gap-4">
-				{ctx.infraStateItems.map(infra => (
-					<Card
-						key={infra.type}
-						emoji={infra.emoji}
-						label={infra.label}
-						description={infra.description}
-						color={infra.color}
-						order={infra.order}
-						checked={!!infra.order}
-						onCheckChange={checked => ctx.handleCardToggle(infra.label, checked)}
-					/>
-				))}
-			</div>
-		),
+		renderOverview: ctx => {
+			const selectedHighSchoolNames = ctx.committedHighSchoolIds
+				.map(id => ctx.highSchoolsMap.get(Number(id))?.name)
+				.filter(Boolean) as string[];
+
+			const selectedDistrictLabels = ctx.committedSchoolDistricts
+				.map(type => ctx.schoolDistrictTypesMap.get(type)?.label)
+				.filter(Boolean) as string[];
+
+			return (
+				<div className="rounded-2xl border bg-secondary p-4 shadow-md space-y-4 transition-colors group-data-[invalid=true]:border-destructive">
+					<div className="space-y-2">
+						<h3 className="text-sm font-bold">인프라 우선순위</h3>
+						<ol className="rounded-xl flex flex-wrap gap-2 justify-start-safe">
+							{ctx.infraStateItems.filter(x => x.order).sort((a, b) => a.order! - b.order!).map((props) => (
+								<li key={props.order}>
+									<InfraTypeBadge {...props}/>
+								</li>
+							))}
+							{!ctx.numberOfSelectedInfra && (
+								<li
+									className="text-sm text-muted-foreground"
+									children="아직 인프라를 선택하지 않았어요!"
+								/>
+							)}
+						</ol>
+					</div>
+
+					<div className="border-t pt-3 space-y-2">
+						<div className="flex flex-wrap gap-4 text-xs">
+							<div>
+								<span className="font-semibold text-muted-foreground mr-2">학군 유형:</span>
+								{selectedDistrictLabels.length > 0 ? (
+									<span className="font-medium">
+										{selectedDistrictLabels.join(", ")}
+									</span>
+								) : (
+									<span className="text-muted-foreground">선택 안 함</span>
+								)}
+							</div>
+							<div>
+								<span className="font-semibold text-muted-foreground mr-2">선호 고등학교:</span>
+								{selectedHighSchoolNames.length > 0 ? (
+									<span className="font-medium text-wrap break-all">
+										{selectedHighSchoolNames.slice(0, 3).join(", ")}
+										{selectedHighSchoolNames.length > 3 && ` 외 ${selectedHighSchoolNames.length - 3}개`}
+									</span>
+								) : (
+									<span className="text-muted-foreground">선택 안 함</span>
+								)}
+							</div>
+						</div>
+					</div>
+				</div>
+			);
+		},
+		renderChildren: ctx => {
+			const isSchoolDistrictEnabled = ctx.selectedInfraTypes.some(infra =>
+				["ELEMENTARY_SCHOOL", "MIDDLE_SCHOOL", "HIGH_SCHOOL"].includes(infra.type)
+			);
+			const isHighSchoolEnabled = ctx.selectedInfraTypes.some(infra =>
+				infra.type === "HIGH_SCHOOL"
+			);
+
+			return (
+				<div className="space-y-4">
+					<div className="grid grid-cols-2 gap-3">
+						<Button
+							type="button"
+							variant="secondary"
+							disabled={!isSchoolDistrictEnabled}
+							onClick={ctx.openSchoolDistrictDialog}
+							className="h-11 rounded-xl font-semibold border-input shadow-sm flex items-center justify-center gap-2"
+						>
+							<span>🎓 학군 유형 설정</span>
+							{ctx.committedSchoolDistricts.length > 0 && (
+								<span className="bg-primary text-primary-foreground text-[10px] size-5 rounded-full flex items-center justify-center font-bold">
+									{ctx.committedSchoolDistricts.length}
+								</span>
+							)}
+						</Button>
+						<Button
+							type="button"
+							variant="secondary"
+							disabled={!isHighSchoolEnabled}
+							onClick={ctx.openHighSchoolDialog}
+							className="h-11 rounded-xl font-semibold border-input shadow-sm flex items-center justify-center gap-2"
+						>
+							<span>🏫 선호 고등학교 설정</span>
+							{ctx.committedHighSchoolIds.length > 0 && (
+								<span className="bg-primary text-primary-foreground text-[10px] size-5 rounded-full flex items-center justify-center font-bold">
+									{ctx.committedHighSchoolIds.length}
+								</span>
+							)}
+						</Button>
+					</div>
+
+					<div className="grid grid-cols-2 gap-4">
+						{ctx.infraStateItems.map(infra => (
+							<Card
+								key={infra.type}
+								type={infra.type}
+								emoji={infra.emoji}
+								label={infra.label}
+								description={infra.description}
+								color={infra.color}
+								order={infra.order}
+								checked={!!infra.order}
+								onCheckChange={checked => ctx.handleCardToggle(infra.label, checked)}
+							/>
+						))}
+					</div>
+
+					<Dialog open={ctx.isSchoolDistrictOpen} onOpenChange={ctx.setSchoolDistrictOpen}>
+						<DialogContent className="w-md sm:max-w-md ">
+							<DialogHeader>
+								<DialogTitle>🎓 학군 유형 설정</DialogTitle>
+								<DialogDescription>
+									원하는 학군 유형을 선택할 수 있어요!<br/>
+									(다중 선택이 가능하며, 우선순위가 적용되지 않아요)
+								</DialogDescription>
+							</DialogHeader>
+							<div className="grid grid-cols-3 gap-3 my-6">
+								{ctx.schoolDistrictTypeItems.map((district) => {
+									const isSelected = ctx.selectedSchoolDistricts.includes(district.type);
+									return (
+										<button
+											key={district.type}
+											type="button"
+											onClick={() => ctx.handleSchoolDistrictToggle(district.type)}
+											className={cn(
+												"flex flex-col items-center-safe justify-center-safe p-3 rounded-xl border text-center transition-all shadow-sm",
+												isSelected
+													? "bg-primary text-primary-foreground border-primary font-semibold"
+													: "bg-transparent hover:bg-accent border-input text-foreground"
+											)}
+										>
+											<span className="text-sm">{district.label}</span>
+											<span className={cn("text-[10px] mt-1 opacity-80", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+												{district.description}
+											</span>
+										</button>
+									);
+								})}
+							</div>
+							<DialogFooter>
+								<Button onClick={() => ctx.handleSchoolDistrictConfirm()} className="rounded-xl px-6">확인</Button>
+							</DialogFooter>
+						</DialogContent>
+					</Dialog>
+
+					<Dialog open={ctx.isHighSchoolOpen} onOpenChange={ctx.setHighSchoolOpen}>
+						<DialogContent className="max-w-lg rounded-2xl max-h-[85vh] overflow-y-auto">
+							<DialogHeader>
+								<DialogTitle>🏫 선호 고등학교 설정</DialogTitle>
+								<DialogDescription>
+									관심 있는 고등학교를 검색하여 추가해보세요!<br/>
+									(다중 선택이 가능하며, 우선순위가 적용되지 않아요)
+								</DialogDescription>
+							</DialogHeader>
+							<SchoolDistrictSelector
+								highSchoolItems={ctx.highSchoolItems}
+								selectedHighSchoolIds={ctx.selectedHighSchoolIds}
+								onHighSchoolsChange={ctx.handleHighSchoolsChange}
+							/>
+							<DialogFooter>
+								<Button onClick={() => ctx.handleHighSchoolConfirm()} className="rounded-xl px-6">확인</Button>
+							</DialogFooter>
+						</DialogContent>
+					</Dialog>
+				</div>
+			);
+		},
 	},
 	{
 		heading: "💰 가격 조건 (선택 사항)",
@@ -329,6 +489,25 @@ interface SectionRenderContext {
 		setRange: (range: PriceRange) => void;
 		setUnit: (unit: PriceUnit) => void;
 	}>;
+	highSchoolItems: schema.HighSchoolItem[];
+	highSchoolsMap: ReadonlyMap<number, schema.HighSchoolItem>;
+	selectedHighSchoolIds: string[];
+	committedHighSchoolIds: string[];
+	handleHighSchoolsChange: (ids: string[]) => void;
+	handleHighSchoolConfirm: () => void;
+	schoolDistrictTypeItems: schema.SchoolDistrictTypeItem[];
+	schoolDistrictTypesMap: ReadonlyMap<string, schema.SchoolDistrictTypeItem>;
+	selectedSchoolDistricts: string[];
+	committedSchoolDistricts: string[];
+	handleSchoolDistrictToggle: (type: string) => void;
+	handleSchoolDistrictConfirm: () => void;
+	selectedInfraTypes: schema.InfraTypeItem[];
+	isSchoolDistrictOpen: boolean;
+	setSchoolDistrictOpen: (open: boolean) => void;
+	openSchoolDistrictDialog: () => void;
+	isHighSchoolOpen: boolean;
+	setHighSchoolOpen: (open: boolean) => void;
+	openHighSchoolDialog: () => void;
 }
 
 /**
@@ -401,11 +580,15 @@ function createOnboardingFormState(
 	region?: schema.RegionItem,
 	infraTypes?: schema.InfraTypeItem[],
 	priceState?: OnboardingPriceState,
+	highSchools?: string[],
+	schoolDistricts?: string[],
 ): OnboardingFormState {
 	return {
 		region: region ?? { id: 0, name: "" },
 		infraTypes: [...(infraTypes ?? [])],
 		priceState: clonePriceState(priceState),
+		highSchools: [...(highSchools ?? [])],
+		schoolDistricts: [...(schoolDistricts ?? [])],
 	};
 }
 
@@ -442,7 +625,7 @@ function isOnboardingLocationState(state: unknown): state is OnboardingPPageLoca
 /**
  * 인프라 카드 컴포넌트 props 타입
  */
-interface CardProps extends Omit<InfraInfoItem, "type"> {
+interface CardProps extends InfraInfoItem {
 	checked: boolean;
 	onCheckChange: (check: boolean) => void;
 }
@@ -451,14 +634,16 @@ interface CardProps extends Omit<InfraInfoItem, "type"> {
  * 인프라 선택 카드 컴포넌트
  */
 function Card({
+	type,
 	label,
 	emoji,
 	description,
-	color,
 	order,
 	checked,
 	onCheckChange,
 }: CardProps) {
+	const color = getInfraColor(type);
+
 	return (
 		<button
 			type="button"
@@ -469,7 +654,7 @@ function Card({
 			className={cn(
 				"relative transition-colors border-2 rounded-2xl shadow-md",
 				"p-4 space-y-1 text-left",
-				checked ? "bg-(--c)/5 border-(--c)/80" : "bg-secondary border-foreground/10",
+				checked ? "bg-(--c)/5 border-(--c)/80" : "bg-secondary border-foreground/10 hover:bg-muted",
 			)}
 			style={{ "--c": color } as React.CSSProperties}
 		>
@@ -494,15 +679,23 @@ export function OnboardingPage() {
 	// const { regionName: defaultRegionName } = useAuthStore();
 	const regionsStore = useRegionsStore();
 	const infraTypesStore = useInfraTypesStore();
+	const schoolDistrictTypesStore = useSchoolDistrictTypesStore();
+	const highSchoolsStore = useHighSchoolsStore();
 
 	const regionItems = regionsStore.items;
 	const regionMap = regionsStore.getMap("name");
 	const infraTypesItems = infraTypesStore.items;
 	const infraTypesMap = infraTypesStore.getMap("label");
+	const schoolDistrictTypeItems = schoolDistrictTypesStore.items;
+	const schoolDistrictTypesMap = schoolDistrictTypesStore.getMap("type");
+	const highSchoolItems = highSchoolsStore.items;
+	const highSchoolsMap = highSchoolsStore.getMap("id");
 	const {
 		region: storedRegion = undefined,
 		infraTypes: storedInfraTypes = [],
 		priceState: storedPriceState = createInitialOnboardingPriceState(),
+		highSchools: storedHighSchools = [],
+		schoolDistricts: storedSchoolDistricts = [],
 		set: setOnboarding,
 		reset: resetOnboarding,
 	} = useOnboardingStore();
@@ -528,11 +721,15 @@ export function OnboardingPage() {
 		storedRegion,
 		storedInfraTypes,
 		storedPriceState,
+		storedHighSchools,
+		storedSchoolDistricts,
 	));
 	const [draftState, setDraftState] = useState<OnboardingFormState>(createOnboardingFormState(
 		storedRegion,
 		storedInfraTypes,
 		storedPriceState,
+		storedHighSchools,
+		storedSchoolDistricts,
 	));
 
 	if (
@@ -540,11 +737,25 @@ export function OnboardingPage() {
 		&& (
 			committedState.region?.id !== storedRegion.id
 			|| committedState.infraTypes.length !== storedInfraTypes.length
+			|| committedState.highSchools.length !== storedHighSchools.length
+			|| committedState.schoolDistricts.length !== storedSchoolDistricts.length
 		)
 	) {
-		const nextState = createOnboardingFormState(storedRegion, storedInfraTypes, storedPriceState);
+		const nextState = createOnboardingFormState(
+			storedRegion,
+			storedInfraTypes,
+			storedPriceState,
+			storedHighSchools,
+			storedSchoolDistricts,
+		);
 		setCommittedState(nextState);
-		setDraftState(createOnboardingFormState(nextState.region, nextState.infraTypes, nextState.priceState));
+		setDraftState(createOnboardingFormState(
+			nextState.region,
+			nextState.infraTypes,
+			nextState.priceState,
+			nextState.highSchools,
+			nextState.schoolDistricts,
+		));
 	}
 
 	useEffect(() => {
@@ -554,6 +765,14 @@ export function OnboardingPage() {
 	useEffect(() => {
 		infraTypesStore.fetch();
 	}, [infraTypesStore]);
+
+	useEffect(() => {
+		schoolDistrictTypesStore.fetch();
+	}, [schoolDistrictTypesStore]);
+
+	useEffect(() => {
+		highSchoolsStore.fetch();
+	}, [highSchoolsStore]);
 
 	const getRegionItem = useCallback(
 		(name: string) => regionMap.get(name) ?? { id: 0, name },
@@ -682,25 +901,70 @@ export function OnboardingPage() {
 
 	const infraStateItems = useMemo(() => {
 		return infraTypesItems.map(infra => {
-			const color = getInfraColor(infra.type);
 			const infraTypeId = infraTypesMap.get(infra.label)!.type;
 			const order = selectedInfraTypes.findIndex(selected => selected.type === infra.type);
 			return {
 				...infra,
-				color: color,
 				id: infraTypeId,
 				order: order >= 0 ? order + 1 : undefined,
 			};
 		});
 	}, [infraTypesItems, infraTypesMap, selectedInfraTypes]);
 
+	const [isSchoolDistrictOpen, setSchoolDistrictOpen] = useState(false);
+	const [isHighSchoolOpen, setHighSchoolOpen] = useState(false);
+
+	const [tempSchoolDistricts, setTempSchoolDistricts] = useState<string[]>([]);
+	const [tempHighSchools, setTempHighSchools] = useState<string[]>([]);
+
+	const openSchoolDistrictDialog = useCallback(() => {
+		setTempSchoolDistricts(draftState.schoolDistricts);
+		setSchoolDistrictOpen(true);
+	}, [draftState.schoolDistricts]);
+
+	const openHighSchoolDialog = useCallback(() => {
+		setTempHighSchools(draftState.highSchools);
+		setHighSchoolOpen(true);
+	}, [draftState.highSchools]);
+
+	const handleSchoolDistrictConfirm = useCallback(() => {
+		updateDraft(prev => ({
+			...prev,
+			schoolDistricts: tempSchoolDistricts,
+		}));
+		setSchoolDistrictOpen(false);
+	}, [updateDraft, tempSchoolDistricts]);
+
+	const handleHighSchoolConfirm = useCallback(() => {
+		updateDraft(prev => ({
+			...prev,
+			highSchools: tempHighSchools,
+		}));
+		setHighSchoolOpen(false);
+	}, [updateDraft, tempHighSchools]);
+
 	const handleCardToggle = useCallback<SectionRenderContext["handleCardToggle"]>((typeName, checked) => {
 		updateDraft(prev => {
+			const targetInfra = infraTypesMap.get(typeName)!;
+			const nextInfraTypes = !checked
+				? prev.infraTypes.filter(value => value.label !== typeName)
+				: [...prev.infraTypes, targetInfra];
+
+			const hasSchoolInfra = nextInfraTypes.some(infra =>
+				["ELEMENTARY_SCHOOL", "MIDDLE_SCHOOL", "HIGH_SCHOOL"].includes(infra.type)
+			);
+			const nextSchoolDistricts = hasSchoolInfra ? prev.schoolDistricts : [];
+
+			const hasHighSchoolInfra = nextInfraTypes.some(infra =>
+				infra.type === "HIGH_SCHOOL"
+			);
+			const nextHighSchools = hasHighSchoolInfra ? prev.highSchools : [];
+
 			return {
 				...prev,
-				infraTypes: !checked
-					? prev.infraTypes.filter(value => value.label !== typeName)
-					: [...prev.infraTypes, infraTypesMap.get(typeName)!],
+				infraTypes: nextInfraTypes,
+				schoolDistricts: nextSchoolDistricts,
+				highSchools: nextHighSchools,
 			};
 		});
 	}, [updateDraft, infraTypesMap]);
@@ -719,6 +983,16 @@ export function OnboardingPage() {
 		updateDraft(prev => ({ ...prev, region }));
 	}, [updateDraft]);
 
+	const handleTempHighSchoolsChange = useCallback((ids: string[]) => {
+		setTempHighSchools(ids);
+	}, []);
+
+	const handleTempSchoolDistrictToggle = useCallback((type: string) => {
+		setTempSchoolDistricts(prev =>
+			prev.includes(type) ? prev.filter(x => x !== type) : [...prev, type]
+		);
+	}, []);
+
 	const sectionContext = useMemo<SectionRenderContext>(() => ({
 		infraStateItems,
 		selectedRegion,
@@ -730,6 +1004,25 @@ export function OnboardingPage() {
 		handleRegionItemClick,
 		handleCardToggle,
 		priceItems: priceItemsWithState,
+		highSchoolItems,
+		highSchoolsMap,
+		selectedHighSchoolIds: tempHighSchools,
+		committedHighSchoolIds: isEditing ? draftState.highSchools : committedState.highSchools,
+		handleHighSchoolsChange: handleTempHighSchoolsChange,
+		handleHighSchoolConfirm,
+		schoolDistrictTypeItems,
+		schoolDistrictTypesMap,
+		selectedSchoolDistricts: tempSchoolDistricts,
+		committedSchoolDistricts: isEditing ? draftState.schoolDistricts : committedState.schoolDistricts,
+		handleSchoolDistrictToggle: handleTempSchoolDistrictToggle,
+		handleSchoolDistrictConfirm,
+		selectedInfraTypes,
+		isSchoolDistrictOpen,
+		setSchoolDistrictOpen,
+		openSchoolDistrictDialog,
+		isHighSchoolOpen,
+		setHighSchoolOpen,
+		openHighSchoolDialog,
 	}), [
 		infraStateItems,
 		selectedRegion,
@@ -741,6 +1034,25 @@ export function OnboardingPage() {
 		handleRegionItemClick,
 		handleCardToggle,
 		priceItemsWithState,
+		highSchoolItems,
+		highSchoolsMap,
+		isEditing,
+		tempHighSchools,
+		draftState.highSchools,
+		committedState.highSchools,
+		handleTempHighSchoolsChange,
+		handleHighSchoolConfirm,
+		schoolDistrictTypeItems,
+		schoolDistrictTypesMap,
+		tempSchoolDistricts,
+		draftState.schoolDistricts,
+		committedState.schoolDistricts,
+		handleTempSchoolDistrictToggle,
+		handleSchoolDistrictConfirm,
+		isSchoolDistrictOpen,
+		isHighSchoolOpen,
+		openSchoolDistrictDialog,
+		openHighSchoolDialog,
 	]);
 
 	const handleEditClick = useCallback((idx: number) => {
@@ -748,6 +1060,8 @@ export function OnboardingPage() {
 			committedState.region,
 			committedState.infraTypes,
 			committedState.priceState,
+			committedState.highSchools,
+			committedState.schoolDistricts,
 		));
 		openEditor(idx);
 	}, [committedState, openEditor]);
@@ -760,6 +1074,8 @@ export function OnboardingPage() {
 			committedState.region,
 			committedState.infraTypes,
 			committedState.priceState,
+			committedState.highSchools,
+			committedState.schoolDistricts,
 		));
 		setEditorErrorMessages(prev => {
 			const next = [...prev];
@@ -774,6 +1090,8 @@ export function OnboardingPage() {
 			getRegionItem(""),
 			[],
 			createInitialOnboardingPriceState(),
+			[],
+			[],
 		);
 
 		resetOnboarding();
@@ -782,6 +1100,8 @@ export function OnboardingPage() {
 			initialState.region,
 			initialState.infraTypes,
 			initialState.priceState,
+			initialState.highSchools,
+			initialState.schoolDistricts,
 		));
 		setOverviewErrorMessages([]);
 		setEditorErrorMessages([]);
@@ -806,6 +1126,8 @@ export function OnboardingPage() {
 			draftState.region,
 			draftState.infraTypes,
 			draftState.priceState,
+			draftState.highSchools,
+			draftState.schoolDistricts,
 		);
 
 		setCommittedState(nextCommittedState);
@@ -813,6 +1135,8 @@ export function OnboardingPage() {
 			region: nextCommittedState.region,
 			infraTypes: nextCommittedState.infraTypes,
 			priceState: nextCommittedState.priceState,
+			highSchools: nextCommittedState.highSchools,
+			schoolDistricts: nextCommittedState.schoolDistricts,
 		});
 
 		setOverviewErrorMessages(prev => {
@@ -851,6 +1175,8 @@ export function OnboardingPage() {
 				// name: undefined,  / 입력란 추가?
 				regionId: committedState.region.id || null,
 				infrastructureTypes: committedState.infraTypes.map(infra => infra.type),
+				highSchoolIds: committedState.highSchools.map(Number),
+				schoolDistrictTypes: committedState.schoolDistricts,
 				salePrice: priceStateToRequestSchema(committedState.priceState.sale),
 				jeonsePrice: priceStateToRequestSchema(committedState.priceState.jeonse),
 			});
@@ -974,5 +1300,77 @@ export function OnboardingPage() {
 				</Footer>
 			</main>
 		</div>
+	);
+}
+
+interface SchoolDistrictSelectorProps {
+	highSchoolItems: schema.HighSchoolItem[];
+	selectedHighSchoolIds: string[];
+	onHighSchoolsChange: (ids: string[]) => void;
+}
+
+function SchoolDistrictSelector({
+	highSchoolItems,
+	selectedHighSchoolIds,
+	onHighSchoolsChange,
+}: SchoolDistrictSelectorProps) {
+	const [searchQuery, setSearchQuery] = useState("");
+	const anchor = useComboboxAnchor();
+	const highSchoolsStore = useHighSchoolsStore();
+	const highSchoolsMap = highSchoolsStore.getMap("id");
+
+	const filteredSchoolIds = useMemo(() => {
+		const filtered = filterList(highSchoolItems, searchQuery, {
+			getString: school => school.name,
+		});
+		return filtered.map(s => String(s.id));
+	}, [searchQuery, highSchoolItems]);
+
+	return (
+		<Combobox
+			multiple
+			value={selectedHighSchoolIds}
+			onValueChange={onHighSchoolsChange}
+			inputValue={searchQuery}
+			onInputValueChange={setSearchQuery}
+			items={filteredSchoolIds}
+			filter={null}
+		>
+			<ComboboxChips ref={anchor}>
+				<ComboboxValue>
+					{(values: string[]) => (
+						<React.Fragment>
+							{values.map((id) => {
+								const school = highSchoolsMap.get(Number(id));
+								return (
+									<ComboboxChip key={id}>
+										{school?.name ?? id}
+									</ComboboxChip>
+								);
+							})}
+							<ComboboxChipsInput placeholder={values.length === 0 ? "고등학교 이름을 검색하세요..." : ""} />
+						</React.Fragment>
+					)}
+				</ComboboxValue>
+			</ComboboxChips>
+			<ComboboxContent
+				anchor={anchor}
+				className="w-full pointer-events-auto"
+				onWheel={(e) => e.stopPropagation()}
+				onTouchMove={(e) => e.stopPropagation()}
+			>
+				<ComboboxEmpty>검색 결과가 없습니다.</ComboboxEmpty>
+				<ComboboxList>
+					{(id: string) => {
+						const school = highSchoolsMap.get(Number(id));
+						return (
+							<ComboboxItem key={id} value={id}>
+								{school?.name ?? id}
+							</ComboboxItem>
+						);
+					}}
+				</ComboboxList>
+			</ComboboxContent>
+		</Combobox>
 	);
 }

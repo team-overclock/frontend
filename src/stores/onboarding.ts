@@ -36,6 +36,8 @@ export type OnboardingPriceState = Record<PriceKey, OnboardingPriceSelection>;
 export interface OnboardingPayload {
 	region?: schema.RegionItem;
 	infraTypes?: schema.InfraTypeItem[];
+	highSchools?: string[];
+	schoolDistricts?: string[];
 	priceState?: OnboardingPriceState;
 }
 
@@ -50,19 +52,27 @@ export interface OnboardingState extends OnboardingPayload {
 export const useOnboardingStore = create<OnboardingState>()(persist(set => ({
 	region: undefined,
 	infraTypes: undefined,
+	highSchools: undefined,
+	schoolDistricts: undefined,
 	priceState: undefined,
 	set: ({
 		region,
 		infraTypes,
+		highSchools,
+		schoolDistricts,
 		priceState,
 	}) => set({
 		region,
 		infraTypes,
+		highSchools,
+		schoolDistricts,
 		priceState,
 	}),
 	reset: () => set({
 		region: undefined,
 		infraTypes: undefined,
+		highSchools: undefined,
+		schoolDistricts: undefined,
 		priceState: undefined,
 	}),
 }), {

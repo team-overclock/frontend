@@ -88,3 +88,13 @@ export const useRegionsStore = createItemStore("item-regions", api.getRegions);
  * 인프라 유형 목록을 localStorage에 유지하는 item store.
  */
 export const useInfraTypesStore = createItemStore("item-infra-types", api.getInfraTypes);
+
+/**
+ * 학군 유형 목록을 localStorage에 유지하는 item store.
+ */
+export const useSchoolDistrictTypesStore = createItemStore("item-school-district-types", api.getSchoolDistrictTypes);
+
+/**
+ * 고등학교 목록을 localStorage에 유지하는 item store.
+ */
+export const useHighSchoolsStore = createItemStore("item-high-schools", api.getHighSchools);
