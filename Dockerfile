@@ -28,11 +28,12 @@ FROM scratch AS common-files
 WORKDIR /defaults
 COPY root/ /
 COPY scripts/ ./scripts
+COPY package.json ./
 
 # 배포용: 소스 파일 사전 복사
 FROM scratch AS source-files
 WORKDIR /defaults
-COPY package.json pnpm-*.yaml ./
+COPY pnpm-*.yaml ./
 COPY tsconfig*.json vite.config.ts index.html ./
 COPY src ./src
 
@@ -65,8 +66,11 @@ RUN pnpm run build
 # 운영용
 FROM base-node AS prod
 ENV MODE=production
+ARG VITE_BACKEND_URL
+ARG VITE_KAKAO_MAP_API_KEY
+ENV BUILD_BACKEND_URL=$VITE_BACKEND_URL
+ENV BUILD_KAKAO_MAP_API_KEY=$VITE_KAKAO_MAP_API_KEY
 COPY --from=prod-build /defaults/dist ./dist
 COPY --from=common-files / /
-COPY package.json ./
 RUN npm install -g serve
 WORKDIR /app

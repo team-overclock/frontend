@@ -2,7 +2,7 @@
 
 cd /app
 
-if [ -d "src" ] || [ -d "dist" ]; then
+if [ -f "package.json" ]; then
 	exit 0
 fi
 

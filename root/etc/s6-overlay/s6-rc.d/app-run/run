@@ -7,6 +7,12 @@ cd /app
 SUCCESS "**** Starting app ****"
 
 if [ "$MODE" == "production" ]; then
+	if [ -n "$BUILD_BACKEND_URL" ] && [ -n "$VITE_BACKEND_URL" ]; then
+		find dist -type f -name "*.js" -exec sed -i "s|$BUILD_BACKEND_URL|$VITE_BACKEND_URL|g" {} \;
+	fi
+	if [ -n "$BUILD_KAKAO_MAP_API_KEY" ] && [ -n "$VITE_KAKAO_MAP_API_KEY" ]; then
+		find dist -type f -name "*.js" -exec sed -i "s|$BUILD_KAKAO_MAP_API_KEY|$VITE_KAKAO_MAP_API_KEY|g" {} \;
+	fi
 	exec s6-setuidgid abc npm run start
 else
 	exec s6-setuidgid abc pnpm run dev --host 0.0.0.0
