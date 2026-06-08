@@ -206,7 +206,7 @@ export async function getRecommendationProperty(taskId: string, propertyId: numb
 		guard: {
 			response: schema.recommendationPropertyDetailOutput,
 		},
-		method: "POST",
+		method: "GET",
 		url: `/recommendations/${taskId}/properties/${propertyId}`,
 		data,
 	});

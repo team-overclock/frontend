@@ -8,6 +8,10 @@ export type RegionItem = z.infer<typeof regionItem>;
 export type InfraTypeItem = z.infer<typeof infraTypeItem>;
 export type GetRegionsOutput = z.infer<typeof getRegionsOutput>;
 export type GetInfraTypeOutput = z.infer<typeof getInfraTypeOutput>;
+export type SchoolDistrictTypeItem = z.infer<typeof schoolDistrictTypeItem>;
+export type GetSchoolDistrictTypesOutput = z.infer<typeof getSchoolDistrictTypesOutput>;
+export type HighSchoolItem = z.infer<typeof highSchoolItem>;
+export type GetHighSchoolsOutput = z.infer<typeof getHighSchoolsOutput>;
 export type SignUpInput = z.infer<typeof signUpInput>;
 export type LoginInput = z.infer<typeof loginInput>;
 export type UserInfoUpdateInput = z.infer<typeof userInfoUpdateInput>;
@@ -23,6 +27,7 @@ export type Address = z.infer<typeof address>;
 export type InfraSummary = z.infer<typeof infraSummary>;
 export type InfraDetail = z.infer<typeof infraDetail>;
 export type RecommendationPropertySummary = z.infer<typeof recommendationPropertySummary>;
+export type UserRecommendationItem = z.infer<typeof userRecommendationItem>;
 export type UserRecommendationsOutput = z.infer<typeof userRecommendationsOutput>;
 export type RecommendationCreateInput = z.infer<typeof recommendationCreateInput>;
 export type RecommendationCreateOutput = z.infer<typeof recommendationCreateOutput>;
@@ -43,13 +48,15 @@ export const datetime = z.coerce.date();
 
 
 export const ERROR_CODE = z.enum([
+	"UNKNOWN_ERROR",
 	"DUPLICATE_EMAIL",
 	"AUTHENTICATION_REQUIRED",
 	"FORBIDDEN",
 	"INVALID_CREDENTIALS",
+	"INCORRECT_CURRENT_PASSWORD",
 	"REGION_ERROR",
-	"INFRASTRUCTURE_TYPE_ERROR",
-	"TASK_ID_TOO_SHORT",
+	"TASK_NOT_FOUND",
+	"HIGH_SCHOOL_ERROR",
 ]);
 
 
@@ -95,6 +102,43 @@ export const getRegionsOutput = z.object({
 export const getInfraTypeOutput = z.object({
 	total: nonNegativeInt,
 	items: infraTypeItem.array(),
+});
+
+
+
+/**
+ * 학군 유형 목록 응답
+ */
+export const schoolDistrictTypeItem = z.object({
+	type: nonEmptyString,
+	label: nonEmptyString,
+	description: nonEmptyString,
+});
+
+/**
+ * 학군 유형 목록 응답
+ */
+export const getSchoolDistrictTypesOutput = z.object({
+	total: nonNegativeInt,
+	items: schoolDistrictTypeItem.array(),
+});
+
+/**
+ * 고등학교 item
+ */
+export const highSchoolItem = z.object({
+	id: nonNegativeInt,
+	name: nonEmptyString,
+	latitude: z.number(),
+	longitude: z.number(),
+});
+
+/**
+ * 고등학교 목록 응답
+ */
+export const getHighSchoolsOutput = z.object({
+	total: nonNegativeInt,
+	items: highSchoolItem.array(),
 });
 
 
@@ -160,51 +204,38 @@ export const recommendationStatus = z.enum(["completed", "in_progress", "failed"
  * 추천 가격 범위
  */
 export const priceRange = z.object({
-	min: nonNegativeInt,
-	max: nonNegativeInt,
-});
-
-/**
- * 추천 요청 시 전달한 데이터 내 pk 등을 사람이 읽을 수 있게 변환한 구조
- */
-export const requestData = z.object({
-	name: nonEmptyString.nullable(),
-	region: nonEmptyString.nullable(),
-	infrastructureTypes: nonEmptyString.array(),
-	salePrice: priceRange.nullable(),
-	jeonsePrice: priceRange.nullable(),
+	min: nonNegativeInt.nullable(),
+	max: nonNegativeInt.nullable(),
 });
 
 /**
  * 지도용 좌표 정보
  */
 export const mapCoordinate = z.object({
-	lat: nonNegativeFloat,
-	lng: nonNegativeFloat,
+	lat: z.number(),
+	lng: z.number(),
 });
 
 /**
  * 좌표 정보
  */
 export const coordinate = z.object({
-	latitude: nonNegativeFloat,
-	longitude: nonNegativeFloat,
+	latitude: z.number(),
+	longitude: z.number(),
 });
 
 /**
  * 주소 정보
  */
 export const address = coordinate.extend({
-	region: nonEmptyString,
-	landLot: nonEmptyString,
+	landLot: nonEmptyString.nullable(),
 	roadName: nonEmptyString.nullable(),
 });
 
 /**
  * 인프라 요약 정보
  */
-export const infraSummary = z.object({
-	type: nonEmptyString,
+export const infraSummary = infraTypeItem.safeExtend({
 	distance: nonNegativeFloat,
 	walkingDuration: nonNegativeInt,
 });
@@ -226,6 +257,7 @@ export const recommendationPropertySummary = z.object({
 	id: nonNegativeInt,
 	name: nonEmptyString,
 	score: nonNegativeFloat,
+	region: regionItem.nullable(),
 	address,
 	salePrice: nonNegativeInt.nullable(),
 	jeonsePrice: nonNegativeInt.nullable(),
@@ -235,22 +267,38 @@ export const recommendationPropertySummary = z.object({
 
 
 /**
- * 사용자별 추천 요청 목록 응답
- */
-export const userRecommendationsOutput = z.object({
-	total: nonNegativeInt,
-	requestData,
-});
-
-/**
  * 추천 생성 요청
  */
 export const recommendationCreateInput = z.object({
 	name: nonEmptyString.optional(),
-	regionId: nonNegativeInt.nullable(),
+	regionId: nonNegativeInt.nullable().optional(),
 	infrastructureTypes: nonEmptyString.array(),
+	highSchoolIds: nonNegativeInt.array().optional(),
+	schoolDistrictTypes: nonEmptyString.array().optional(),
 	salePrice: priceRange.nullable().optional(),
 	jeonsePrice: priceRange.nullable().optional(),
+});
+
+/**
+ * 추천 요청 시 전달한 데이터 내 pk 등을 사람이 읽을 수 있게 변환한 구조
+ */
+export const requestData = z.object({
+	name: nonEmptyString.nullable(),
+	region: regionItem.nullable(),
+	infrastructureTypes: infraTypeItem.array(),
+	highSchools: highSchoolItem.array().nullable(),
+	schoolDistricts: schoolDistrictTypeItem.array().nullable(),
+	salePrice: priceRange.nullable(),
+	jeonsePrice: priceRange.nullable(),
+});
+
+/**
+ * 추천 데이터 수정 요청
+ *
+ * 현재는 이름만 변경 가능
+ */
+export const recommendationUpdateInput = z.object({
+	name: z.string().nullable().optional(),
 });
 
 /**
@@ -258,13 +306,13 @@ export const recommendationCreateInput = z.object({
  */
 export const recommendationCreateOutput = z.object({
 	taskId: nonEmptyString,
-	status: recommendationStatus,
 });
 
 /**
  * 추천 결과에 대한 요약 정보 응답
  */
 export const recommendationSummaryOutput = recommendationCreateOutput.safeExtend({
+	status: recommendationStatus,
 	total: nonNegativeInt.nullable(),
 	requestData,
 	properties: recommendationPropertySummary.array().nullable(),
@@ -275,4 +323,24 @@ export const recommendationSummaryOutput = recommendationCreateOutput.safeExtend
  */
 export const recommendationPropertyDetailOutput = recommendationPropertySummary.extend({
 	infrastructure: infraDetail.array(),
+});
+
+
+
+/**
+ * 사용자별 추천 요청 목록 아이템
+ */
+export const userRecommendationItem = recommendationCreateOutput.safeExtend({
+	status: recommendationStatus,
+	requestedAt: datetime,
+	lastViewedAt: datetime,
+	requestData,
+});
+
+/**
+ * 사용자별 추천 요청 목록 응답
+ */
+export const userRecommendationsOutput = z.object({
+	total: nonNegativeInt,
+	items: userRecommendationItem.array(),
 });
