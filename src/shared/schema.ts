@@ -259,8 +259,8 @@ export const recommendationPropertySummary = z.object({
 	score: nonNegativeFloat,
 	region: regionItem.nullable(),
 	address,
-	salePrice: nonNegativeInt.nullable(),
-	jeonsePrice: nonNegativeInt.nullable(),
+	salePrice: priceRange.nullable(),
+	jeonsePrice: priceRange.nullable(),
 	infrastructure: infraSummary.array().max(2),
 });
 
@@ -321,7 +321,8 @@ export const recommendationSummaryOutput = recommendationCreateOutput.safeExtend
 /**
  * 추천 결과 내 매물에 대한 상세 정보 응답
  */
-export const recommendationPropertyDetailOutput = recommendationPropertySummary.extend({
+export const recommendationPropertyDetailOutput = z.object({
+	...recommendationPropertySummary.shape,
 	infrastructure: infraDetail.array(),
 });
 
