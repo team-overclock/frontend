@@ -8,6 +8,7 @@ import { ServerAuthLayout } from "@/layouts/ServerAuthLayout";
 
 import { HomePage } from "@/pages/home";
 import { RecommendationPage } from "@/pages/recommendation";
+import { UserRecommendationsPage } from "@/pages/user-recommendations";
 import { OnboardingPage } from "@/pages/onboarding";
 import { SettingsPage } from "@/pages/settings";
 import { SignPage } from "@/pages/sign";
@@ -52,6 +53,10 @@ export const router = createBrowserRouter([
 					{
 						path: ROUTES.RECOMMENDATION,
 						element: <RecommendationPage/>
+					},
+					{
+						path: ROUTES.USER_RECOMMENDATIONS,
+						element: <UserRecommendationsPage/>
 					},
 					{
 						path: ROUTES.SETTINGS,

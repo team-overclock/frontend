@@ -26,6 +26,7 @@ export function HomePage() {
 			- <NavLink to={ROUTES.SIGN_UP}>회원가입 페이지</NavLink><br/>
 			- <NavLink to={ROUTES.ONBOARDING}>온보딩 페이지</NavLink><br/>
 			- <NavLink to={`${ROUTES.RECOMMENDATION}?task_id=random_seed_1`}>추천 결과 조회 페이지</NavLink><br/>
+			- <NavLink to={ROUTES.USER_RECOMMENDATIONS}>사용자 추천 요청 목록 페이지</NavLink><br/>
 			- <NavLink to={ROUTES.SETTINGS}>설정 페이지</NavLink><br/>
 			<hr className="my-2"/>
 			<Button
