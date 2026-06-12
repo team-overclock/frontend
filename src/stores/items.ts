@@ -51,6 +51,7 @@ function createItemStore<T>(
 			set({ isError: false, isLoading: true });
 			try {
 				const { items } = await apiFn();
+				if (!items.length) throw new Error;
 				set({
 					items,
 					updatedAt: now,
