@@ -24,7 +24,6 @@ import {
 	useComboboxAnchor,
 } from "@/components/ui/combobox";
 import { getRequestErrorMessage } from "@/lib/request-error";
-// import { useAuthStore } from "@/stores/auth";
 import { getInfraColor } from "@/shared/common";
 import {
 	useOnboardingStore,

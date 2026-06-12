@@ -1,7 +1,6 @@
 import { useRef, useMemo, useState, useEffect, useCallback } from "react";
-import { useNavigate, useLocation, type Location } from "react-router";
+import { useNavigate, useSearchParams, useLocation, type Location } from "react-router";
 import { TagIcon, CheckCheckIcon, SettingsIcon, LoaderIcon, SearchAlertIcon, X, MapPin, Sparkles } from "lucide-react";
-import { useSearchParams } from "react-router";
 import { useKakaoLoader, useMap, Map as KakaoMap, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
 
 import * as env from "@/shared/env";
@@ -380,17 +379,12 @@ function MarkerInfo({
  * 추천 결과를 지도에 표시하는 컴포넌트
  */
 function RecommendationMap({
-	// taskId,
-	// requestData,
 	properties,
 	activeItem,
 	onActiveChange,
 }:
-	& Pick<
-		schema.RecommendationSummaryOutput,
-		"taskId" | "requestData" | "properties"
-	>
 	& {
+		properties: schema.RecommendationPropertySummary[],
 		activeItem?: ActivePropertyItem | null;
 		onActiveChange: (propertyId: number | null) => void;
 	}
@@ -940,7 +934,6 @@ export function RecommendationPage() {
 	const [snap, setSnap] = useState<number | string | null>(snapPoints[0]);
 
 	const isMobile = useIsMobile();
-	// const isMobile = true
 	const location = useLocation() as Location<LocationState | undefined>;
 	const [searchParams] = useSearchParams();
 	const taskId = useMemo(() => searchParams.get("task_id") ?? "", [searchParams]);
@@ -1104,6 +1097,7 @@ export function RecommendationPage() {
 					</div>
 				</RecommendationSheet>
 			)}
+
 			<div className="flex-1 flex flex-col">
 				{isMobile && <>
 					<Header heading={`추천 결과 조회 - ${recName || "(이름 없음)"}`}>
@@ -1137,7 +1131,7 @@ export function RecommendationPage() {
 					) : (
 						<div className={cn("flex-1", isMobile ? "" : "-ml-4")}>
 							<RecommendationMap
-								{...recommendation}
+								properties={recommendation.properties ?? []}
 								activeItem={activePropertyItem}
 								onActiveChange={id => {
 									handlePropertyClick(id, "marker");

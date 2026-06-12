@@ -3,11 +3,11 @@ import { persist } from "zustand/middleware";
 
 
 
-interface AuthStateData {
+export interface AuthStateData {
 	isLoggedIn: boolean;
 }
 
-interface AuthState extends Partial<AuthStateData> {
+export interface AuthState extends Partial<AuthStateData> {
 	set: (data: AuthStateData) => void;
 	clear: () => void;
 }

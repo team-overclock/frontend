@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { ROUTES } from "@/shared/routes";
 import { useLogoutMutation, useUpdatePasswordMutation, useUpdateProfileInfoMutation } from "@/hooks/auth";
 import { useServerAuthLayoutContext } from "@/hooks/use-layout-context";
-// import { useRegionsStore } from "@/stores/items";
 import { getRequestErrorMessage } from "@/lib/request-error";
 
 import { AccountForm, type AccountFormProps, type AccountFormFieldOptions } from "@/components/account-form";

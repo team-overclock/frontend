@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 
 
-interface GuestLoginButtonProps extends React.ComponentProps<typeof Button> {
+export interface GuestLoginButtonProps extends React.ComponentProps<typeof Button> {
 	label?: string;
 	to?: string;
 }

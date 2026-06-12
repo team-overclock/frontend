@@ -8,11 +8,6 @@ import { BACKEND_URL } from "@/shared/env";
 
 
 
-/*
- * TODO:
- * region, infra type error 시 응답 내 items를 localStorage로 저장하기
- */
-
 /**
  * 백엔드 API와 통신하기 위한 Axios 인스턴스
  *

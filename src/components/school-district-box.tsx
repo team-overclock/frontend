@@ -8,7 +8,6 @@ export interface SchoolDistrictBoxProps extends React.ComponentProps<"button"> {
 	isSelected?: boolean;
 }
 
-
 export function SchoolDistrictBox({
 	item,
 	className,
