@@ -67,16 +67,6 @@ import { SchoolDistrictBox } from "@/components/school-district-box";
 
 
 /**
- * 가격 슬라이드 옵션 기본값
- */
-const DEFAULT_PRICE_SLIDER_OPTIONS: PriceSliderOptions = {
-	min: 0,
-	max: 9999,
-	step: 0.1,
-	unit: "억 원",
-};
-
-/**
  * 가격 정보
  */
 const PRICE_ITEMS: readonly PriceItem[] = [
@@ -84,13 +74,23 @@ const PRICE_ITEMS: readonly PriceItem[] = [
 		key: "sale",
 		icon: "🏠",
 		label: "매매",
-		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
+		slider: {
+			min: 0,
+			max: Infinity,
+			step: 0.1,
+			unit: "억 원",
+		},
 	},
 	{
 		key: "jeonse",
 		icon: "💸",
 		label: "전세",
-		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
+		slider: {
+			min: 0,
+			max: Infinity,
+			step: 1,
+			unit: "만 원",
+		},
 	},
 ];
 
@@ -99,7 +99,7 @@ const PRICE_ITEMS: readonly PriceItem[] = [
  */
 const SECTION_OPTIONS: SectionOptions[] = [
 	{
-		heading: "선호 동네",
+		heading: "선호 동네 (선택 사항)",
 		description: "추천 받고 싶은 동네를 선택할 수 있어요!",
 		renderOverview: ctx => (
 			<form.RegionField
@@ -322,7 +322,7 @@ const SECTION_OPTIONS: SectionOptions[] = [
 		renderChildren: ctx => (
 			<div className="rounded-2xl border bg-secondary p-4 shadow-md space-y-3">
 				{ctx.priceItems.map(item => (
-					<div key={item.key} className="not-last:border-b">
+					<div key={item.key} className="not-last:border-b not-last:pb-2">
 						<div className="flex justify-between items-center-safe">
 							<Label htmlFor={item.key}>{item.icon} {item.label}</Label>
 							<Switch id={item.key} checked={item.enabled} onCheckedChange={item.setEnabled}/>
@@ -364,7 +364,7 @@ const SECTION_OPTIONS: SectionOptions[] = [
 											min={item.slider.min}
 											max={item.slider.max}
 											step={item.slider.step}
-											value={item.range[1]}
+											value={item.range[1] === Infinity ? 0 : item.range[1]}
 											disabled={!item.enabled}
 											aria-disabled={!item.enabled}
 											aria-label={`${item.label} 최대 금액`}
@@ -401,20 +401,22 @@ const SECTION_OPTIONS: SectionOptions[] = [
 									</Select>
 								</div>
 							</div>
-							<Slider
-								className="w-full py-2"
-								min={item.slider.min}
-								max={item.slider.max}
-								step={item.slider.step}
-								value={item.range}
-								disabled={!item.enabled}
-								aria-disabled={!item.enabled}
-								aria-label={`${item.label} 가격 범위`}
-								onValueChange={value => {
-									if (value.length !== 2) return;
-									item.setRange(value as PriceRange);
-								}}
-							/>
+							{item.slider.max !== Infinity && (
+								<Slider
+									className="w-full py-2"
+									min={item.slider.min}
+									max={item.slider.max}
+									step={item.slider.step}
+									value={item.range}
+									disabled={!item.enabled}
+									aria-disabled={!item.enabled}
+									aria-label={`${item.label} 가격 범위`}
+									onValueChange={value => {
+										if (value.length !== 2) return;
+										item.setRange(value as PriceRange);
+									}}
+								/>
+							)}
 						</div>
 					</div>
 				))}
@@ -529,13 +531,13 @@ interface SectionOptions {
 const createInitialOnboardingPriceState = (): OnboardingPriceState => ({
 	sale: {
 		enabled: false,
-		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
-		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
+		range: [PRICE_ITEMS[0].slider.min, PRICE_ITEMS[0].slider.max],
+		unit: PRICE_ITEMS[0].slider.unit,
 	},
 	jeonse: {
 		enabled: false,
-		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
-		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
+		range: [PRICE_ITEMS[1].slider.min, PRICE_ITEMS[1].slider.max],
+		unit: PRICE_ITEMS[1].slider.unit,
 	},
 });
 
