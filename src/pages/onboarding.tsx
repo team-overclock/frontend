@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { TagIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { convertToNumber } from "@/lib/price-unit";
@@ -714,6 +715,7 @@ export function OnboardingPage() {
 	const [overviewErrorMessages, setOverviewErrorMessages] = useState<string[]>([]);
 	const [editorErrorMessages, setEditorErrorMessages] = useState<string[]>([]);
 	const [requestErrorMessage, setRequestErrorMessage] = useState("");
+	const [name, setName] = useState("");
 
 	const [committedState, setCommittedState] = useState<OnboardingFormState>(createOnboardingFormState(
 		storedRegion,
@@ -1170,7 +1172,7 @@ export function OnboardingPage() {
 
 		try {
 			const response = await createRecommendation({
-				// name: undefined,  / 입력란 추가?
+				name: name.trim() || undefined,
 				regionId: committedState.region.id || null,
 				infrastructureTypes: committedState.infraTypes.map(infra => infra.type),
 				highSchoolIds: committedState.highSchools.map(Number),
@@ -1185,11 +1187,12 @@ export function OnboardingPage() {
 				search: `?task_id=${encodeURIComponent(response.taskId)}`,
 			}, {
 				replace: true,
+				state: { name: name.trim() || undefined },
 			});
 		} catch (error) {
 			setRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [committedState, navigate, resetOnboarding, sectionContext]);
+	}, [committedState, name, navigate, resetOnboarding, sectionContext]);
 
 	return (
 		<div className="flex-1 flex flex-col h-full w-full">
@@ -1211,6 +1214,21 @@ export function OnboardingPage() {
 								: "absolute inset-0 h-0 -translate-x-12 opacity-0 pointer-events-none",
 						)}
 					>
+						<article className="px-2 space-y-1">
+							<h2 className="text-lg font-bold">추천 이름</h2>
+							<p className="mb-2 text-sm text-muted-foreground">이 추천에 대한 나만의 이름을 지정할 수 있어요! (선택 사항)</p>
+							<form.NameField
+								id="recommendation-name"
+								type="text"
+								label="예) 우리 가족 이사 후보지"
+								placeholder="예) 우리 가족 이사 후보지"
+								value={name}
+								required={false}
+								onChange={e => setName(e.target.value)}
+								leftIcon={<TagIcon/>}
+							/>
+						</article>
+
 						<header className="px-2 space-y-1">
 							<h2 className="text-lg font-bold">검색 조건을 설정해 주세요</h2>
 							<p className="text-sm text-muted-foreground">원하는 조건에 맞는 집을 찾아드려요!</p>

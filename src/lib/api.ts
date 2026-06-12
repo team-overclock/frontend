@@ -212,6 +212,20 @@ export async function createRecommendation(data: schema.RecommendationCreateInpu
 }
 
 /**
+ * 추천 정보 수정 요청
+ */
+export async function updateRecommendation(taskId: string, data: schema.RecommendationUpdateInput) {
+	return request({
+		guard: {
+			request: schema.recommendationUpdateInput,
+		},
+		method: "PATCH",
+		url: `/recommendations/${taskId}`,
+		data,
+	});
+}
+
+/**
  * 추천 생성 결과 조회
  */
 export async function getRecommendation(taskId: string) {

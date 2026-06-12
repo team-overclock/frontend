@@ -1,6 +1,6 @@
 import { useRef, useMemo, useState, useEffect, useCallback } from "react";
-import { useLocation, type Location } from "react-router";
-import { SettingsIcon, LoaderIcon, SearchAlertIcon, X, MapPin, Sparkles } from "lucide-react";
+import { useNavigate, useLocation, type Location } from "react-router";
+import { TagIcon, CheckCheckIcon, SettingsIcon, LoaderIcon, SearchAlertIcon, X, MapPin, Sparkles } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { useKakaoLoader, useMap, Map as KakaoMap, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
 
@@ -8,13 +8,14 @@ import * as env from "@/shared/env";
 import type * as schema from "@/shared/schema";
 import { RETRY_DELAY_MS, sleep } from "@/shared/common";
 import { cn } from "@/lib/utils";
-import { getRecommendation, getRecommendationProperty } from "@/lib/api";
+import { getRecommendation, getRecommendationProperty, updateRecommendation } from "@/lib/api";
 import { formatPriceUnit } from "@/lib/price-unit";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip } from "@/components/tooltip";
 import { Header } from "@/components/header";
+import { FloatingLabelInput } from "@/components/input";
 import { InfraTypeBadge } from "@/components/infra-type-badge";
 import { SchoolDistrictBox } from "@/components/school-district-box";
 import {
@@ -734,23 +735,55 @@ function RecommendationSheet({
 
 
 function RecommendationRequestDataDialog({
+	taskId,
 	open,
 	onOpenChange,
+	onRecommendationNameSave,
+	recommendationName,
 	trigger,
 	requestData,
 }: {
+	taskId: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	onRecommendationNameSave: (name: string) => void;
+	recommendationName: string;
 	trigger: React.ReactNode;
 	requestData?: schema.RequestData;
 }) {
+	const navigation = useNavigate();
+	const location = useLocation();
+	const [submit, setSUbmit] = useState(false);
 	const selectedInfraTypes = new Set(requestData?.infrastructureTypes.map(x => x.type) ?? []);
 	const selectedSchoolDistricts = new Set(requestData?.schoolDistricts?.map(x => x.type) ?? []);
 	const schoolDistrictTypesStore = useSchoolDistrictTypesStore();
 
+	const [recName, setRecName] = useState(recommendationName);
+
 	useEffect(() => {
 		schoolDistrictTypesStore.fetch();
 	}, [schoolDistrictTypesStore]);
+
+	const onSubmit = useCallback<React.SubmitEventHandler<HTMLFormElement>>(e => {
+		e.preventDefault();
+		updateRecommendation(taskId, { name: recName })
+			.then(() => {
+				onRecommendationNameSave(recName);
+				setSUbmit(true);
+				setTimeout(() => {
+					setSUbmit(false);
+				}, 2000);
+			})
+			.then(() => {
+				navigation(location, {
+					replace: true,
+					state: {
+						...location.state,
+						name: recName,
+					},
+				});
+			});
+	}, [location, navigation, taskId, recName, onRecommendationNameSave]);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -759,6 +792,22 @@ function RecommendationRequestDataDialog({
 				<DialogHeader>
 					<DialogTitle className="font-bold" children="추천 요청 정보"/>
 					<DialogDescription className="sr-only" children="추천 요청 정보"/>
+					<form onSubmit={onSubmit} className="pt-1 flex gap-2 items-center-safe">
+						<FloatingLabelInput
+							value={recName}
+							onChange={e => setRecName(e.currentTarget.value)}
+							leftIcon={<TagIcon/>}
+							label="추천 이름"
+							placeholder="추천 이름"
+							className="flex-1"
+						/>
+						<Button
+							type="submit"
+							variant="ghost"
+							children={submit ? <CheckCheckIcon/> : "저장"}
+							className={cn("w-12", submit && "text-green-600!")}
+						/>
+					</form>
 				</DialogHeader>
 
 				<div
@@ -1026,8 +1075,11 @@ export function RecommendationPage() {
 				>
 					<Header heading="추천 결과 조회">
 						<RecommendationRequestDataDialog
+							taskId={taskId}
 							open={isRequestDataDialogOpen}
 							onOpenChange={setIsRequestDataDialogOpen}
+							recommendationName={recName}
+							onRecommendationNameSave={setRecName}
 							trigger={<SettingsIcon/>}
 							requestData={recommendation?.requestData}
 						/>
@@ -1056,8 +1108,11 @@ export function RecommendationPage() {
 				{isMobile && <>
 					<Header heading={`추천 결과 조회 - ${recName || "(이름 없음)"}`}>
 						<RecommendationRequestDataDialog
+							taskId={taskId}
 							open={isRequestDataDialogOpen}
 							onOpenChange={setIsRequestDataDialogOpen}
+							recommendationName={recName}
+							onRecommendationNameSave={setRecName}
 							trigger={<SettingsIcon/>}
 							requestData={recommendation?.requestData}
 						/>
