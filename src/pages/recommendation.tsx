@@ -935,7 +935,7 @@ export function RecommendationPage() {
 
 	const isMobile = useIsMobile();
 	const location = useLocation() as Location<LocationState | undefined>;
-	const [searchParams] = useSearchParams();
+	const [searchParams, setSearchParams] = useSearchParams();
 	const taskId = useMemo(() => searchParams.get("task_id") ?? "", [searchParams]);
 	const [activePropertyItem, setActivePropertyItem] = useState<ActivePropertyItem | null>(null);
 	const [recState, setRecState] = useState<RecommendationRequestState>("is_pending");
@@ -1032,6 +1032,15 @@ export function RecommendationPage() {
 					setRecState(rec.status);
 					setRecommendation(rec);
 
+					if (rec.taskId !== taskId) {
+						setSearchParams({
+							task_id: rec.taskId,
+						}, {
+							replace: true,
+							state: location.state,
+						});
+					}
+
 					if (rec.status === "completed" || rec.status === "failed") return;
 				} catch (e) {
 					if (cancelled) return;
@@ -1049,7 +1058,7 @@ export function RecommendationPage() {
 		return () => {
 			cancelled = true;
 		};
-	}, [taskId]);
+	}, [taskId, location.state, setSearchParams]);
 
 	return (
 		<div className="flex-1 flex w-full">
