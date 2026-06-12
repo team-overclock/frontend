@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { TagIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { convertToNumber } from "@/lib/price-unit";
@@ -61,18 +62,9 @@ import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import * as form from "@/components/form";
 import { InfraTypeBadge } from "@/components/infra-type-badge";
+import { SchoolDistrictBox } from "@/components/school-district-box";
 
 
-
-/**
- * 가격 슬라이드 옵션 기본값
- */
-const DEFAULT_PRICE_SLIDER_OPTIONS: PriceSliderOptions = {
-	min: 0,
-	max: 9999,
-	step: 0.1,
-	unit: "억 원",
-};
 
 /**
  * 가격 정보
@@ -82,13 +74,23 @@ const PRICE_ITEMS: readonly PriceItem[] = [
 		key: "sale",
 		icon: "🏠",
 		label: "매매",
-		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
+		slider: {
+			min: 0,
+			max: Infinity,
+			step: 0.1,
+			unit: "억 원",
+		},
 	},
 	{
 		key: "jeonse",
 		icon: "💸",
 		label: "전세",
-		slider: DEFAULT_PRICE_SLIDER_OPTIONS,
+		slider: {
+			min: 0,
+			max: Infinity,
+			step: 1,
+			unit: "만 원",
+		},
 	},
 ];
 
@@ -97,7 +99,7 @@ const PRICE_ITEMS: readonly PriceItem[] = [
  */
 const SECTION_OPTIONS: SectionOptions[] = [
 	{
-		heading: "선호 동네",
+		heading: "선호 동네 (선택 사항)",
 		description: "추천 받고 싶은 동네를 선택할 수 있어요!",
 		renderOverview: ctx => (
 			<form.RegionField
@@ -145,7 +147,10 @@ const SECTION_OPTIONS: SectionOptions[] = [
 				.filter(Boolean) as string[];
 
 			return (
-				<div className="rounded-2xl border bg-secondary p-4 shadow-md space-y-4 transition-colors group-data-[invalid=true]:border-destructive">
+				<div className={cn(
+					"rounded-2xl border bg-secondary p-4 shadow-md space-y-4 transition-colors",
+					"group-data-[required=true]:border-primary group-data-[invalid=true]:border-destructive!"
+				)}>
 					<div className="space-y-2">
 						<h3 className="text-sm font-bold">인프라 우선순위</h3>
 						<ol className="rounded-xl flex flex-wrap gap-2 justify-start-safe">
@@ -261,22 +266,12 @@ const SECTION_OPTIONS: SectionOptions[] = [
 								{ctx.schoolDistrictTypeItems.map((district) => {
 									const isSelected = ctx.selectedSchoolDistricts.includes(district.type);
 									return (
-										<button
+										<SchoolDistrictBox
 											key={district.type}
-											type="button"
+											item={district}
 											onClick={() => ctx.handleSchoolDistrictToggle(district.type)}
-											className={cn(
-												"flex flex-col items-center-safe justify-center-safe p-3 rounded-xl border text-center transition-all shadow-sm",
-												isSelected
-													? "bg-primary text-primary-foreground border-primary font-semibold"
-													: "bg-transparent hover:bg-accent border-input text-foreground"
-											)}
-										>
-											<span className="text-sm">{district.label}</span>
-											<span className={cn("text-[10px] mt-1 opacity-80", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
-												{district.description}
-											</span>
-										</button>
+											isSelected={isSelected}
+										/>
 									);
 								})}
 							</div>
@@ -327,58 +322,62 @@ const SECTION_OPTIONS: SectionOptions[] = [
 		renderChildren: ctx => (
 			<div className="rounded-2xl border bg-secondary p-4 shadow-md space-y-3">
 				{ctx.priceItems.map(item => (
-					<div key={item.key} className="not-last:border-b">
+					<div key={item.key} className="not-last:border-b not-last:pb-2">
 						<div className="flex justify-between items-center-safe">
 							<Label htmlFor={item.key}>{item.icon} {item.label}</Label>
 							<Switch id={item.key} checked={item.enabled} onCheckedChange={item.setEnabled}/>
 						</div>
 						<div>
-							<div className="flex justify-between items-center-safe pt-2 pb-1.5 gap-3">
-								<div className="flex items-center-safe gap-2">
-									<Label htmlFor={`${item.key}-min`} className="text-xs text-muted-foreground">최소</Label>
-									<Input
-										id={`${item.key}-min`}
-										type="number"
-										inputMode="numeric"
-										className="h-8 w-22 rounded-md px-2"
-										min={item.slider.min}
-										max={item.slider.max}
-										step={item.slider.step}
-										value={item.range[0]}
-										disabled={!item.enabled}
-										aria-disabled={!item.enabled}
-										aria-label={`${item.label} 최소 금액`}
-										onChange={event => {
-											const parsed = Number(event.target.value);
-											if (Number.isNaN(parsed)) return;
+							<div className="flex flex-wrap-reverse justify-between items-center-safe pt-2 pb-1.5 gap-3">
+								<div className="flex flex-wrap items-center-safe gap-2">
+									<div className="flex items-center-safe gap-1">
+										<Label htmlFor={`${item.key}-min`} className="text-xs text-muted-foreground">최소</Label>
+										<Input
+											id={`${item.key}-min`}
+											type="number"
+											inputMode="numeric"
+											className="h-8 w-22 rounded-md px-2"
+											min={item.slider.min}
+											max={item.slider.max}
+											step={item.slider.step}
+											value={item.range[0]}
+											disabled={!item.enabled}
+											aria-disabled={!item.enabled}
+											aria-label={`${item.label} 최소 금액`}
+											onChange={event => {
+												const parsed = Number(event.target.value);
+												if (Number.isNaN(parsed)) return;
 
-											const nextMin = clampNumber(parsed, item.slider.min, item.slider.max);
-											const nextMax = Math.max(nextMin, item.range[1]);
-											item.setRange([nextMin, nextMax]);
-										}}
-									/>
-									<Label htmlFor={`${item.key}-max`} className="text-xs text-muted-foreground">최대</Label>
-									<Input
-										id={`${item.key}-max`}
-										type="number"
-										inputMode="numeric"
-										className="h-8 w-22 rounded-md px-2"
-										min={item.slider.min}
-										max={item.slider.max}
-										step={item.slider.step}
-										value={item.range[1]}
-										disabled={!item.enabled}
-										aria-disabled={!item.enabled}
-										aria-label={`${item.label} 최대 금액`}
-										onChange={event => {
-											const parsed = Number(event.target.value);
-											if (Number.isNaN(parsed)) return;
+												const nextMin = clampNumber(parsed, item.slider.min, item.slider.max);
+												const nextMax = Math.max(nextMin, item.range[1]);
+												item.setRange([nextMin, nextMax]);
+											}}
+										/>
+									</div>
+									<div className="flex items-center-safe gap-1">
+										<Label htmlFor={`${item.key}-max`} className="text-xs text-muted-foreground">최대</Label>
+										<Input
+											id={`${item.key}-max`}
+											type="number"
+											inputMode="numeric"
+											className="h-8 w-22 rounded-md px-2"
+											min={item.slider.min}
+											max={item.slider.max}
+											step={item.slider.step}
+											value={item.range[1] === Infinity ? 0 : item.range[1]}
+											disabled={!item.enabled}
+											aria-disabled={!item.enabled}
+											aria-label={`${item.label} 최대 금액`}
+											onChange={event => {
+												const parsed = Number(event.target.value);
+												if (Number.isNaN(parsed)) return;
 
-											const nextMax = clampNumber(parsed, item.slider.min, item.slider.max);
-											const nextMin = Math.min(item.range[0], nextMax);
-											item.setRange([nextMin, nextMax]);
-										}}
-									/>
+												const nextMax = clampNumber(parsed, item.slider.min, item.slider.max);
+												const nextMin = Math.min(item.range[0], nextMax);
+												item.setRange([nextMin, nextMax]);
+											}}
+										/>
+									</div>
 								</div>
 								<div className="flex items-center-safe gap-1">
 									<Label asChild className="text-xs text-muted-foreground"><span>단위</span></Label>
@@ -402,20 +401,22 @@ const SECTION_OPTIONS: SectionOptions[] = [
 									</Select>
 								</div>
 							</div>
-							<Slider
-								className="w-full py-2"
-								min={item.slider.min}
-								max={item.slider.max}
-								step={item.slider.step}
-								value={item.range}
-								disabled={!item.enabled}
-								aria-disabled={!item.enabled}
-								aria-label={`${item.label} 가격 범위`}
-								onValueChange={value => {
-									if (value.length !== 2) return;
-									item.setRange(value as PriceRange);
-								}}
-							/>
+							{item.slider.max !== Infinity && (
+								<Slider
+									className="w-full py-2"
+									min={item.slider.min}
+									max={item.slider.max}
+									step={item.slider.step}
+									value={item.range}
+									disabled={!item.enabled}
+									aria-disabled={!item.enabled}
+									aria-label={`${item.label} 가격 범위`}
+									onValueChange={value => {
+										if (value.length !== 2) return;
+										item.setRange(value as PriceRange);
+									}}
+								/>
+							)}
 						</div>
 					</div>
 				))}
@@ -530,13 +531,13 @@ interface SectionOptions {
 const createInitialOnboardingPriceState = (): OnboardingPriceState => ({
 	sale: {
 		enabled: false,
-		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
-		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
+		range: [PRICE_ITEMS[0].slider.min, PRICE_ITEMS[0].slider.max],
+		unit: PRICE_ITEMS[0].slider.unit,
 	},
 	jeonse: {
 		enabled: false,
-		range: [DEFAULT_PRICE_SLIDER_OPTIONS.min, DEFAULT_PRICE_SLIDER_OPTIONS.max],
-		unit: DEFAULT_PRICE_SLIDER_OPTIONS.unit,
+		range: [PRICE_ITEMS[1].slider.min, PRICE_ITEMS[1].slider.max],
+		unit: PRICE_ITEMS[1].slider.unit,
 	},
 });
 
@@ -716,6 +717,7 @@ export function OnboardingPage() {
 	const [overviewErrorMessages, setOverviewErrorMessages] = useState<string[]>([]);
 	const [editorErrorMessages, setEditorErrorMessages] = useState<string[]>([]);
 	const [requestErrorMessage, setRequestErrorMessage] = useState("");
+	const [name, setName] = useState("");
 
 	const [committedState, setCommittedState] = useState<OnboardingFormState>(createOnboardingFormState(
 		storedRegion,
@@ -1172,7 +1174,7 @@ export function OnboardingPage() {
 
 		try {
 			const response = await createRecommendation({
-				// name: undefined,  / 입력란 추가?
+				name: name.trim() || undefined,
 				regionId: committedState.region.id || null,
 				infrastructureTypes: committedState.infraTypes.map(infra => infra.type),
 				highSchoolIds: committedState.highSchools.map(Number),
@@ -1187,11 +1189,12 @@ export function OnboardingPage() {
 				search: `?task_id=${encodeURIComponent(response.taskId)}`,
 			}, {
 				replace: true,
+				state: { name: name.trim() || undefined },
 			});
 		} catch (error) {
 			setRequestErrorMessage(getRequestErrorMessage(error));
 		}
-	}, [committedState, navigate, resetOnboarding, sectionContext]);
+	}, [committedState, name, navigate, resetOnboarding, sectionContext]);
 
 	return (
 		<div className="flex-1 flex flex-col h-full w-full">
@@ -1213,6 +1216,21 @@ export function OnboardingPage() {
 								: "absolute inset-0 h-0 -translate-x-12 opacity-0 pointer-events-none",
 						)}
 					>
+						<article className="px-2 space-y-1">
+							<h2 className="text-lg font-bold">추천 이름</h2>
+							<p className="mb-2 text-sm text-muted-foreground">이 추천에 대한 나만의 이름을 지정할 수 있어요! (선택 사항)</p>
+							<form.NameField
+								id="recommendation-name"
+								type="text"
+								label="예) 우리 가족 이사 후보지"
+								placeholder="예) 우리 가족 이사 후보지"
+								value={name}
+								required={false}
+								onChange={e => setName(e.target.value)}
+								leftIcon={<TagIcon/>}
+							/>
+						</article>
+
 						<header className="px-2 space-y-1">
 							<h2 className="text-lg font-bold">검색 조건을 설정해 주세요</h2>
 							<p className="text-sm text-muted-foreground">원하는 조건에 맞는 집을 찾아드려요!</p>
@@ -1225,11 +1243,12 @@ export function OnboardingPage() {
 								key={opts.heading}
 								className="relative group"
 								data-invalid={!!overviewErrorMessages[idx]}
+								data-required={opts.required ? true : undefined}
 							>
 								{opts.required && (
 									<span
 										className={cn(
-											"block px-2 py-1 text-sm text-muted-foreground font-medium",
+											"block px-2 py-1 text-xs font-medium text-primary",
 											overviewErrorMessages[idx] && "text-destructive",
 										)}
 										children="* 필수"
@@ -1243,7 +1262,7 @@ export function OnboardingPage() {
 									variant="ghost"
 									className={cn(
 										"absolute z-999 right-2 text-xs font-medium text-muted-foreground",
-										opts.required ? "top-8" : "top-2",
+										opts.required ? "top-9" : "top-2",
 									)}
 									onClick={() => handleEditClick(idx)}
 									children="수정"

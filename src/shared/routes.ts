@@ -5,7 +5,6 @@ export const ROUTES = {
 	HOME: "/",
 	ONBOARDING: "/onboarding",
 	RECOMMENDATION: "/recommendation",
-	USER_RECOMMENDATIONS: "/user-recommendation",
 	SETTINGS: "/settings",
 	SIGN_IN: "/login",
 	SIGN_UP: "/signup",

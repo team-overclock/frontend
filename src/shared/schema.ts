@@ -30,6 +30,7 @@ export type RecommendationPropertySummary = z.infer<typeof recommendationPropert
 export type UserRecommendationItem = z.infer<typeof userRecommendationItem>;
 export type UserRecommendationsOutput = z.infer<typeof userRecommendationsOutput>;
 export type RecommendationCreateInput = z.infer<typeof recommendationCreateInput>;
+export type RecommendationUpdateInput = z.infer<typeof recommendationUpdateInput>;
 export type RecommendationCreateOutput = z.infer<typeof recommendationCreateOutput>;
 export type RecommendationSummaryOutput = z.infer<typeof recommendationSummaryOutput>;
 export type RecommendationPropertyDetailOutput = z.infer<typeof recommendationPropertyDetailOutput>;
@@ -257,11 +258,11 @@ export const recommendationPropertySummary = z.object({
 	id: nonNegativeInt,
 	name: nonEmptyString,
 	score: nonNegativeFloat,
-	region: regionItem.nullable(),
+	region: regionItem,
 	address,
 	salePrice: priceRange.nullable(),
 	jeonsePrice: priceRange.nullable(),
-	infrastructure: infraSummary.array().max(2),
+	infrastructure: infraSummary.array(),
 });
 
 

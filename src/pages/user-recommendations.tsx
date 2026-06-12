@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
-import { LoaderIcon, SearchAlertIcon, ClockIcon, Sparkles, MapPin } from "lucide-react";
+import { useNavigate, NavLink } from "react-router";
+import { LoaderIcon, User2Icon, SearchAlertIcon, ClockIcon, Sparkles, MapPin } from "lucide-react";
 
 import type * as schema from "@/shared/schema";
 import { getRecommendations } from "@/lib/api";
@@ -57,24 +57,23 @@ function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 			className={cn(
 				"flex flex-col gap-3 p-4 rounded-xl border bg-card shadow-sm",
 				"transition-all duration-200",
-				isClickable && "hover:shadow-md hover:border-primary/40 cursor-pointer",
+				isClickable && "hover:shadow-md hover:border-primary/40 focus-visible:shadow-md focus-visible:outline-primary/40 cursor-pointer",
 				status === "in_progress" && "border-blue-500/30",
 				status === "failed" && "border-destructive/30 opacity-60",
 			)}
 			onClick={isClickable ? onClick : undefined}
+			tabIndex={isClickable ? 0 : undefined}
+			role={isClickable ? "link" : undefined}
 		>
 			{/* 상단: 제목 + 상태 */}
 			<div className="flex items-start justify-between gap-2">
-				<h3 className="font-bold text-base text-foreground/90 break-keep flex-1 leading-tight">
-					{requestData.name ? (
-						<>
-							<Sparkles size={14} className="inline-block mr-1 text-primary align-text-top"/>
-							{requestData.name}
-						</>
-					) : (
-						<span className="text-muted-foreground font-medium text-sm">{item.taskId}</span>
+				<h3
+					className={cn(
+						"font-bold text-base text-foreground/90 break-keep flex-1 leading-tight",
+						!requestData.name && "text-muted-foreground font-medium text-sm"
 					)}
-				</h3>
+					children={requestData.name || "(이름 없음)"}
+				/>
 				<StatusBadge status={status}/>
 			</div>
 
@@ -140,7 +139,12 @@ export function UserRecommendationsPage() {
 
 		getRecommendations()
 			.then((res) => {
-				if (!cancelled) setData(res);
+				if (cancelled) return;
+				if (res.total === 0) {
+					navigate(ROUTES.ONBOARDING, { replace: true });
+					return;
+				}
+				setData(res);
 			})
 			.catch((e) => {
 				console.error(e);
@@ -151,7 +155,7 @@ export function UserRecommendationsPage() {
 			});
 
 		return () => { cancelled = true; };
-	}, []);
+	}, [navigate]);
 
 	const handleItemClick = (item: schema.UserRecommendationItem) => {
 		navigate(
@@ -162,7 +166,23 @@ export function UserRecommendationsPage() {
 
 	return (
 		<>
-			<Header heading="내 추천 목록"/>
+			<Header heading="내 추천 목록">
+				<div className="flex items-center-safe gap-2">
+					<Button
+						variant="outline"
+						className="p-4 shadow-md font-bold"
+						asChild
+					>
+						<NavLink to={ROUTES.ONBOARDING} className="no-underline">
+							<Sparkles size={16}/>
+							새 추천 생성
+						</NavLink>
+					</Button>
+					<NavLink to={ROUTES.SETTINGS}>
+						<User2Icon/>
+					</NavLink>
+				</div>
+			</Header>
 
 			{loading ? (
 				<main className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -179,19 +199,7 @@ export function UserRecommendationsPage() {
 						children="다시 시도"
 					/>
 				</main>
-			) : !data || data.total === 0 ? (
-				<main className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground px-6 text-center">
-					<Sparkles size={40} className="opacity-30"/>
-					<div>
-						<p className="font-bold text-lg">아직 추천 요청 내역이 없어요</p>
-						<p className="text-sm mt-1">온보딩에서 조건을 입력하고 첫 추천을 받아보세요!</p>
-					</div>
-					<Button
-						onClick={() => navigate(ROUTES.ONBOARDING)}
-						children="추천 받으러 가기"
-					/>
-				</main>
-			) : (
+			) : data ? (
 				<main className="flex-1 flex flex-col gap-3 py-4 app-container">
 					<p className="text-sm text-muted-foreground font-medium">
 						총 {data.total}건의 추천 요청
@@ -204,7 +212,7 @@ export function UserRecommendationsPage() {
 						/>
 					))}
 				</main>
-			)}
+			) : null}
 		</>
 	);
 }

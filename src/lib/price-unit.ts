@@ -43,9 +43,18 @@ export function convertToNumber(value: string) {
  * @returns 숫자 가격과 단위 문자열의 튜플 (예: [20, "억 원"], [500, "만 원"])
  */
 export function formatPriceUnit(value: number): [number, PriceUnit] {
+	let number: number;
+	let unit: PriceUnit;
+
 	if (value >= 10_000 * 10_000) {
-		return [value / (10_000 * 10_000), "억 원"];
+		number = value / (10_000 * 10_000);
+		unit = "억 원";
 	} else {
-		return [value / 10_000, "만 원"];
+		number = value / 10_000;
+		unit = "만 원";
 	}
+
+	number = Math.round(number * 100) / 100; // 소수점 둘째 자리까지 반올림
+
+	return [number, unit];
 }
