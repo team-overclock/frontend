@@ -1,6 +1,6 @@
 import { useRef, useMemo, useState, useEffect, useCallback } from "react";
 import { useLocation, type Location } from "react-router";
-import { LoaderIcon, SearchAlertIcon, X, MapPin, Sparkles } from "lucide-react";
+import { SettingsIcon, LoaderIcon, SearchAlertIcon, X, MapPin, Sparkles } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { useKakaoLoader, useMap, Map as KakaoMap, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
 
@@ -16,6 +16,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip } from "@/components/tooltip";
 import { Header } from "@/components/header";
 import { InfraTypeBadge } from "@/components/infra-type-badge";
+import { SchoolDistrictBox } from "@/components/school-district-box";
 import {
 	Drawer,
 	DrawerTrigger,
@@ -41,7 +42,9 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSchoolDistrictTypesStore } from "@/stores/items";
 
 
 
@@ -50,6 +53,28 @@ type RecommendationRequestState = LocalState | schema.RecommendationStatus;
 
 const sheetId = "sheet";
 const defaultPoint: schema.MapCoordinate = { lat: 33.450701, lng: 126.570667 };
+
+
+
+function NaverMapLink({
+	latitude,
+	longitude,
+	children,
+	...props
+}: (
+	& Omit<React.ComponentProps<"a">, "href">
+	& schema.Coordinate
+)) {
+	return (
+		<a
+			rel="noopener noreferrer"
+			href={`https://map.naver.com/p/search/${latitude},${longitude}?c=15.00,0,0,0,dh`}
+			target="_blank"
+			children={children}
+			{...props}
+		/>
+	);
+}
 
 
 
@@ -183,6 +208,27 @@ interface PropertyDetailViewProps {
 	onClose?: () => void;
 }
 
+function PropertyAddress({
+	name,
+	region,
+	address,
+}: schema.RecommendationPropertySummary) {
+	return (
+		// 건물명 및 주소
+		<div className="flex justify-between items-start gap-2">
+			<div className="flex flex-col gap-0.5">
+				<h4 className="font-extrabold text-base tracking-tight leading-tight text-foreground/90 break-keep">
+					{name}
+				</h4>
+				<div className="flex items-center gap-1 text-xs text-muted-foreground">
+					<MapPin size={12} className="shrink-0"/>
+					<span className="truncate">{address.landLot || address.roadName || region?.name}</span>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function PropertyDetailContent({
 	property,
 	infrastructureTypes,
@@ -228,17 +274,6 @@ function PropertyDetailContent({
 					)}>
 						{property.infrastructure.map((infra, idx) => {
 							if (isDetailed && 'name' in infra && 'score' in infra) {
-								const searches = [
-									...(property.region?.name.split(" ").slice(0, 2) ?? []),
-									(
-										infra.label.includes("학교") ? "학교" :
-											infra.label.includes("병원") ? "병원" :
-												infra.label.includes("공원") ? "공원" :
-													infra.label
-									),
-									infra.name,
-								]
-
 								const isActive = infrastructureTypes?.has(infra.type);
 
 								return (
@@ -255,10 +290,9 @@ function PropertyDetailContent({
 										<div className="flex-1 min-w-0 flex flex-col gap-1">
 											<div className="flex items-center justify-between gap-2">
 												<h6 className="font-bold text-sm text-foreground/90 truncate">
-													<a
-														rel="noopener noreferrer"
-														href={`https://map.naver.com/p/search/${searches.join("+")}?searchType=place`}
-														target="_blank"
+													<NaverMapLink
+														latitude={infra.latitude}
+														longitude={infra.longitude}
 														children={infra.name}
 													/>
 												</h6>
@@ -298,31 +332,30 @@ function PropertyDetailContent({
 }
 
 function MarkerInfo({
+	rank,
 	onClose,
+	children,
 	...p
 }:
 	& schema.RecommendationPropertySummary
-	& { onClose: () => void }
+	& {
+		rank: number;
+		onClose: () => void;
+		children: React.ReactNode;
+	}
 ) {
 	return (
 		<div className="relative bottom-6 w-72 bg-card/95 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl p-4 text-foreground flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
-			{/* 상단 헤더: 타이틀 & 점수 & 닫기버튼 */}
-			<div className="flex justify-between items-start gap-2">
-				<div className="flex flex-col gap-0.5">
-					<h4 className="font-extrabold text-base tracking-tight leading-tight text-foreground/90 break-keep">
-						{p.name}
-					</h4>
-					<div className="flex items-center gap-1 text-xs text-muted-foreground">
-						<MapPin size={12} className="shrink-0"/>
-						<span className="truncate">{p.address.landLot || p.address.roadName || p.region?.name}</span>
-					</div>
-				</div>
+			{/* 상단 헤더: 순위 & 점수 & 닫기버튼 */}
+			<header className="flex justify-between items-start gap-2">
+				{/* 순위 뱃지 */}
+				<Trophy
+					rank={rank}
+				/>
 				<div className="flex items-center gap-1.5 shrink-0">
 					{/* 점수 뱃지 */}
-					<div className="flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-bold bg-linear-to-r from-indigo-500 to-violet-600 text-white shadow-sm">
-						<Sparkles size={10} className="fill-white"/>
-						<span>{Math.round(p.score)}점</span>
-					</div>
+					<ScoreBadge score={p.score}/>
+
 					{/* 닫기 버튼 */}
 					<button
 						onClick={(e) => {
@@ -335,10 +368,9 @@ function MarkerInfo({
 						<X size={14}/>
 					</button>
 				</div>
-			</div>
+			</header>
 
-			{/* 상세 내용 */}
-			<PropertyDetailContent property={p} isDetailed={false}/>
+			{children}
 		</div>
 	);
 }
@@ -422,9 +454,13 @@ function RecommendationMap({
 								clickable={true}
 							>
 								<MarkerInfo
+									rank={idx + 1}
 									{...currentProperty}
 									onClose={() => onActiveChange(null)}
-								/>
+								>
+									<PropertyAddress {...currentProperty}/>
+									<PropertyDetailContent property={currentProperty} isDetailed={false}/>
+								</MarkerInfo>
 							</CustomOverlayMap>
 						)}
 					</div>
@@ -448,7 +484,7 @@ function RecommendationMap({
 function Trophy({ rank }: { rank: number }) {
 	const imoji = ["🥇", "🥈", "🥉"][rank - 1] || "";
 	return (
-		<p
+		<span
 			className={cn(
 				"font-bold text-foreground",
 				rank === 1 && "text-yellow-500",
@@ -494,6 +530,23 @@ function ScoreGauge({
 	);
 }
 
+function ScoreBadge({
+	score,
+	className,
+}: {
+	score?: number;
+	className?: string;
+}) {
+	if (score === undefined) return null;
+
+	return (
+		<span className={cn("flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-bold bg-linear-to-r from-indigo-500 to-violet-600 text-white shadow-sm", className)}>
+			<Sparkles size={10}/>
+			<span>{Math.round(score)}점</span>
+		</span>
+	);
+}
+
 function PriceBox({
 	label,
 	price,
@@ -521,7 +574,7 @@ function PropertySummaryBox(p: (
 		hasSalePrice: boolean;
 		hasJeonsePrice: boolean;
 		onActiveChange: (id: number) => void;
-		onDetailClick: (id: number) => void;
+		onDetailClick: (id: number, rank: number) => void;
 	}
 )) {
 	return (
@@ -559,7 +612,7 @@ function PropertySummaryBox(p: (
 				children="상세보기"
 				onClick={(e) => {
 					e.stopPropagation();
-					p.onDetailClick(p.id);
+					p.onDetailClick(p.id, p.rank);
 				}}
 			/>
 		</article>
@@ -582,7 +635,7 @@ function RecommendationItems({
 	items: PropertySummaryWithRank[];
 	activeItem?: ActivePropertyItem | null;
 	onActiveChange: (id: number) => void;
-	onDetailClick: (id: number) => void;
+	onDetailClick: (id: number, rank: number) => void;
 	hasSalePrice: boolean;
 	hasJeonsePrice: boolean;
 	className?: string;
@@ -680,12 +733,117 @@ function RecommendationSheet({
 
 
 
+function RecommendationRequestDataDialog({
+	open,
+	onOpenChange,
+	trigger,
+	requestData,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	trigger: React.ReactNode;
+	requestData?: schema.RequestData;
+}) {
+	const selectedInfraTypes = new Set(requestData?.infrastructureTypes.map(x => x.type) ?? []);
+	const selectedSchoolDistricts = new Set(requestData?.schoolDistricts?.map(x => x.type) ?? []);
+	const schoolDistrictTypesStore = useSchoolDistrictTypesStore();
+
+	useEffect(() => {
+		schoolDistrictTypesStore.fetch();
+	}, [schoolDistrictTypesStore]);
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogTrigger children={trigger}/>
+			<DialogContent className="max-w-md!">
+				<DialogHeader>
+					<DialogTitle className="font-bold" children="추천 요청 정보"/>
+					<DialogDescription className="sr-only" children="추천 요청 정보"/>
+				</DialogHeader>
+
+				<div
+					className={cn(
+						"-mx-4 no-scrollbar max-h-[50vh] overflow-y-auto px-4 space-y-4",
+						"*:space-y-2 *:border-t *:pt-4",
+						"**:[h3]:font-medium **:[h3]:text-base",
+					)}
+				>
+					<div>
+						<h3>동네</h3>
+						<p children={requestData?.region?.name || "-"}/>
+					</div>
+
+					<div>
+						<h3>인프라 우선순위</h3>
+						<ol className="flex flex-wrap gap-2 text-nowrap">
+							{requestData?.infrastructureTypes.map((x, idx) => (
+								<li key={x.type} className="flex items-center gap-2">
+									<InfraTypeBadge order={idx + 1} {...x} className="text-sm px-2 py-1"/>
+								</li>
+							))}
+						</ol>
+					</div>
+
+					{(selectedInfraTypes.has("ELEMENTARY_SCHOOL") || selectedInfraTypes.has("MIDDLE_SCHOOL") || selectedInfraTypes.has("HIGH_SCHOOL")) && (
+						<div>
+							<h4>학군 유형</h4>
+							<div className="grid grid-cols-3 gap-3">
+								{schoolDistrictTypesStore.items.map(district => (
+									<SchoolDistrictBox
+										key={district.type}
+										item={district}
+										isSelected={selectedSchoolDistricts.has(district.type)}
+										className={cn("pointer-events-none", !selectedSchoolDistricts.has(district.type) && "opacity-50")}
+									/>
+								))}
+							</div>
+						</div>
+					)}
+
+					{selectedInfraTypes.has("HIGH_SCHOOL") && (
+						<div>
+							<h4>선택한 고등학교</h4>
+							<ul className="">
+								{requestData?.highSchools?.map(x => (
+									<li key={x.name}><NaverMapLink
+										latitude={x.latitude}
+										longitude={x.longitude}
+										children={x.name}
+									/></li>
+								)) ?? <li>-</li>}
+							</ul>
+						</div>
+					)}
+
+					<div>
+						<h3>가격</h3>
+						<div>
+							<p>매매: {!requestData?.salePrice?.min && !requestData?.salePrice?.max ? "-" : (<>
+								{requestData.salePrice.min && formatPriceUnit(requestData.salePrice.min).join(" ")}
+								{" ~ "}
+								{requestData.salePrice.max && formatPriceUnit(requestData.salePrice.max).join(" ")}
+							</>)}</p>
+							<p>전세: {!requestData?.jeonsePrice?.min && !requestData?.jeonsePrice?.max ? "-" : (<>
+								{requestData.jeonsePrice.min && formatPriceUnit(requestData.jeonsePrice.min).join(" ")}
+								{" ~ "}
+								{requestData.jeonsePrice.max && formatPriceUnit(requestData.jeonsePrice.max).join(" ")}
+							</>)}</p>
+						</div>
+					</div>
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+
+
 const snapPoints = ["550px", 1];
 
 interface LocationState {
 	/**
 	 * - 추천 요청 후 페이지 이동 시 입력한 name 값 넘기기
-	 * - 추천 목록 페이지에서 클릭 시 화묜에 표시된 name 넘기기
+	 * - 추천 목록 페이지에서 클릭 시 화면에 표시된 name 넘기기
 	 */
 	name?: string;
 }
@@ -742,11 +900,13 @@ export function RecommendationPage() {
 	const [recommendation, setRecommendation] = useState<null | schema.RecommendationSummaryOutput>(null);
 	const [detailOpen, setDetailOpen] = useState(false);
 	const [detailLoading, setDetailLoading] = useState(false);
-	const [detailData, setDetailData] = useState<schema.RecommendationPropertyDetailOutput | null>(null);
+	const [details, setDetails] = useState<Record<number, schema.RecommendationPropertyDetailOutput>>({});
 	const [detailError, setDetailError] = useState<string | null>(null);
-	const [selectedProperty, setSelectedProperty] = useState<schema.RecommendationPropertySummary | null>(null);
+	const [selectedProperty, setSelectedProperty] = useState<{ rank: number; item?: schema.RecommendationPropertySummary }>({ rank: 0 });
 
-	const recName = recommendation?.requestData.name || location.state?.name || taskId;
+	const [isRequestDataDialogOpen, setIsRequestDataDialogOpen] = useState(false);
+	const [recName, setRecName] = useState(location.state?.name?.trim() ?? "");
+
 	const hasSalePrice = !!recommendation?.requestData.salePrice;
 	const hasJeonsePrice = !!recommendation?.requestData.jeonsePrice;
 
@@ -758,17 +918,18 @@ export function RecommendationPage() {
 		}
 	};
 
-	const handleViewDetail = async (propertyId: number) => {
+	const handleViewDetail = async (propertyId: number, rank: number) => {
 		if (!recommendation) return;
 
-		const prop = recommendation.properties?.find(p => p.id === propertyId);
-		setSelectedProperty(prop ?? null);
+		const item = recommendation.properties?.find(p => p.id === propertyId);
+		setSelectedProperty({ rank, item });
 
 		setDetailOpen(true);
+		handlePropertyClick(propertyId, "detail");
+		if (details[propertyId]) return;
+
 		setDetailLoading(true);
 		setDetailError(null);
-		setDetailData(null);
-		handlePropertyClick(propertyId, "detail");
 
 		try {
 			const reqData = recommendation.requestData;
@@ -783,7 +944,10 @@ export function RecommendationPage() {
 			};
 
 			const detail = await getRecommendationProperty(taskId, propertyId, apiInput);
-			setDetailData(detail);
+			setDetails(prev => ({
+				...prev,
+				[propertyId]: detail,
+			}));
 		} catch (e) {
 			console.error(e);
 			setDetailError("상세 정보를 불러오는 데 실패했습니다.");
@@ -822,6 +986,7 @@ export function RecommendationPage() {
 					const rec = await getRecommendation(taskId);
 					if (cancelled) return;
 
+					setRecName(p => rec.requestData.name?.trim() ?? p);
 					setRecState(rec.status);
 					setRecommendation(rec);
 
@@ -859,12 +1024,19 @@ export function RecommendationPage() {
 					}}
 					onDetailClick={handleViewDetail}
 				>
-					<Header heading="추천 결과 조회"/>
+					<Header heading="추천 결과 조회">
+						<RecommendationRequestDataDialog
+							open={isRequestDataDialogOpen}
+							onOpenChange={setIsRequestDataDialogOpen}
+							trigger={<SettingsIcon/>}
+							requestData={recommendation?.requestData}
+						/>
+					</Header>
 					<Tooltip
 						type="button"
-						trigger={recName}
-						children={recName}
-						className="w-full font-bold text-center overflow-hidden text-ellipsis"
+						trigger={recName || "(이름 없음)"}
+						children={recName || "(이름 없음)"}
+						className="px-6 w-full font-bold text-center overflow-hidden text-ellipsis"
 						tabIndex={-1}
 					/>
 					<div
@@ -875,14 +1047,21 @@ export function RecommendationPage() {
 						)}
 					>
 						{infraInfos.map(infra => (
-							<InfraTypeBadge key={infra.type} {...infra}/>
+							<InfraTypeBadge key={infra.type} {...infra} className="text-xs"/>
 						))}
 					</div>
 				</RecommendationSheet>
 			)}
 			<div className="flex-1 flex flex-col">
 				{isMobile && <>
-					<Header heading={`추천 결과 조회 - ${recName}`.trim()}/>
+					<Header heading={`추천 결과 조회 - ${recName || "(이름 없음)"}`}>
+						<RecommendationRequestDataDialog
+							open={isRequestDataDialogOpen}
+							onOpenChange={setIsRequestDataDialogOpen}
+							trigger={<SettingsIcon/>}
+							requestData={recommendation?.requestData}
+						/>
+					</Header>
 					<ScrollArea className="w-svw whitespace-nowrap">
 						<div className="bg-secondary p-4 w-full flex justify-center-safe gap-4">
 							{infraInfos.map((infra) => (
@@ -965,25 +1144,19 @@ export function RecommendationPage() {
 			<Dialog open={detailOpen} onOpenChange={setDetailOpen}>
 				<DialogContent>
 					{(() => {
-						const p = detailData || selectedProperty;
+						const tank = selectedProperty.rank;
+						const propertyId = selectedProperty.item?.id;
+						const cachedDetail = propertyId !== undefined ? details[propertyId] : undefined;
+						const p = cachedDetail ?? selectedProperty.item;
+
 						return (
 							<>
 								<DialogHeader>
-									<div className="flex items-center justify-between gap-4 mr-6">
-										<DialogTitle className="text-xl font-extrabold tracking-tight text-foreground/90 break-keep">
-											{p?.name}
-										</DialogTitle>
-										<div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-extrabold bg-linear-to-r from-indigo-500 to-violet-600 text-white shadow-md shrink-0">
-											<Sparkles size={12} className="fill-white"/>
-											<span>{p?.score === undefined ? "???" : Math.round(p.score)}점</span>
-										</div>
+									<div className="flex flex-row items-start justify-between gap-4 mr-6">
+										<DialogTitle><Trophy rank={tank}/></DialogTitle>
+										<DialogDescription><ScoreBadge score={p?.score}/></DialogDescription>
 									</div>
-									<DialogDescription className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-										<MapPin size={14} className="shrink-0"/>
-										<span className="break-all">
-											{p?.address.roadName || p?.address.landLot || p?.region?.name}
-										</span>
-									</DialogDescription>
+									{p && <PropertyAddress {...p}/>}
 								</DialogHeader>
 
 								{detailLoading ? (
@@ -996,19 +1169,22 @@ export function RecommendationPage() {
 										<SearchAlertIcon size={40}/>
 										<p className="text-sm font-bold">{detailError}</p>
 									</div>
-								) : detailData ? (
+								) : p ? (
 									<div className="-mx-4 no-scrollbar max-h-[50vh] overflow-y-auto px-4 flex flex-col gap-6">
-										<PropertyDetailContent property={detailData} isDetailed={true} infrastructureTypes={new Set(infraInfos.map(x => x.type))}/>
+										<PropertyDetailContent property={p} isDetailed={true} infrastructureTypes={new Set(infraInfos.map(x => x.type))}/>
 									</div>
 								) : null}
 
 								<DialogFooter>
-									{detailData ? (
-										<DialogClose asChild>
-											<Button variant="default" className="font-bold">
-												네이버 부동산으로 이동
-											</Button>
-										</DialogClose>
+									{p ? (
+										<Button variant="default" className="font-bold" asChild>
+											<NaverMapLink
+												className="text-white no-underline"
+												latitude={p.address.latitude}
+												longitude={p.address.longitude}
+												children="네이버 지도로 이동"
+											/>
+										</Button>
 									) : (
 										<DialogClose asChild>
 											<Button variant="secondary" className="font-bold">

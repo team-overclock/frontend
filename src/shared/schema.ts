@@ -257,11 +257,11 @@ export const recommendationPropertySummary = z.object({
 	id: nonNegativeInt,
 	name: nonEmptyString,
 	score: nonNegativeFloat,
-	region: regionItem.nullable(),
+	region: regionItem,
 	address,
 	salePrice: priceRange.nullable(),
 	jeonsePrice: priceRange.nullable(),
-	infrastructure: infraSummary.array().max(2),
+	infrastructure: infraSummary.array(),
 });
 
 

@@ -61,6 +61,7 @@ import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import * as form from "@/components/form";
 import { InfraTypeBadge } from "@/components/infra-type-badge";
+import { SchoolDistrictBox } from "@/components/school-district-box";
 
 
 
@@ -145,7 +146,10 @@ const SECTION_OPTIONS: SectionOptions[] = [
 				.filter(Boolean) as string[];
 
 			return (
-				<div className="rounded-2xl border bg-secondary p-4 shadow-md space-y-4 transition-colors group-data-[invalid=true]:border-destructive">
+				<div className={cn(
+					"rounded-2xl border bg-secondary p-4 shadow-md space-y-4 transition-colors",
+					"group-data-[required=true]:border-primary group-data-[invalid=true]:border-destructive!"
+				)}>
 					<div className="space-y-2">
 						<h3 className="text-sm font-bold">인프라 우선순위</h3>
 						<ol className="rounded-xl flex flex-wrap gap-2 justify-start-safe">
@@ -261,22 +265,12 @@ const SECTION_OPTIONS: SectionOptions[] = [
 								{ctx.schoolDistrictTypeItems.map((district) => {
 									const isSelected = ctx.selectedSchoolDistricts.includes(district.type);
 									return (
-										<button
+										<SchoolDistrictBox
 											key={district.type}
-											type="button"
+											item={district}
 											onClick={() => ctx.handleSchoolDistrictToggle(district.type)}
-											className={cn(
-												"flex flex-col items-center-safe justify-center-safe p-3 rounded-xl border text-center transition-all shadow-sm",
-												isSelected
-													? "bg-primary text-primary-foreground border-primary font-semibold"
-													: "bg-transparent hover:bg-accent border-input text-foreground"
-											)}
-										>
-											<span className="text-sm">{district.label}</span>
-											<span className={cn("text-[10px] mt-1 opacity-80", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
-												{district.description}
-											</span>
-										</button>
+											isSelected={isSelected}
+										/>
 									);
 								})}
 							</div>
@@ -333,52 +327,56 @@ const SECTION_OPTIONS: SectionOptions[] = [
 							<Switch id={item.key} checked={item.enabled} onCheckedChange={item.setEnabled}/>
 						</div>
 						<div>
-							<div className="flex justify-between items-center-safe pt-2 pb-1.5 gap-3">
-								<div className="flex items-center-safe gap-2">
-									<Label htmlFor={`${item.key}-min`} className="text-xs text-muted-foreground">최소</Label>
-									<Input
-										id={`${item.key}-min`}
-										type="number"
-										inputMode="numeric"
-										className="h-8 w-22 rounded-md px-2"
-										min={item.slider.min}
-										max={item.slider.max}
-										step={item.slider.step}
-										value={item.range[0]}
-										disabled={!item.enabled}
-										aria-disabled={!item.enabled}
-										aria-label={`${item.label} 최소 금액`}
-										onChange={event => {
-											const parsed = Number(event.target.value);
-											if (Number.isNaN(parsed)) return;
+							<div className="flex flex-wrap-reverse justify-between items-center-safe pt-2 pb-1.5 gap-3">
+								<div className="flex flex-wrap items-center-safe gap-2">
+									<div className="flex items-center-safe gap-1">
+										<Label htmlFor={`${item.key}-min`} className="text-xs text-muted-foreground">최소</Label>
+										<Input
+											id={`${item.key}-min`}
+											type="number"
+											inputMode="numeric"
+											className="h-8 w-22 rounded-md px-2"
+											min={item.slider.min}
+											max={item.slider.max}
+											step={item.slider.step}
+											value={item.range[0]}
+											disabled={!item.enabled}
+											aria-disabled={!item.enabled}
+											aria-label={`${item.label} 최소 금액`}
+											onChange={event => {
+												const parsed = Number(event.target.value);
+												if (Number.isNaN(parsed)) return;
 
-											const nextMin = clampNumber(parsed, item.slider.min, item.slider.max);
-											const nextMax = Math.max(nextMin, item.range[1]);
-											item.setRange([nextMin, nextMax]);
-										}}
-									/>
-									<Label htmlFor={`${item.key}-max`} className="text-xs text-muted-foreground">최대</Label>
-									<Input
-										id={`${item.key}-max`}
-										type="number"
-										inputMode="numeric"
-										className="h-8 w-22 rounded-md px-2"
-										min={item.slider.min}
-										max={item.slider.max}
-										step={item.slider.step}
-										value={item.range[1]}
-										disabled={!item.enabled}
-										aria-disabled={!item.enabled}
-										aria-label={`${item.label} 최대 금액`}
-										onChange={event => {
-											const parsed = Number(event.target.value);
-											if (Number.isNaN(parsed)) return;
+												const nextMin = clampNumber(parsed, item.slider.min, item.slider.max);
+												const nextMax = Math.max(nextMin, item.range[1]);
+												item.setRange([nextMin, nextMax]);
+											}}
+										/>
+									</div>
+									<div className="flex items-center-safe gap-1">
+										<Label htmlFor={`${item.key}-max`} className="text-xs text-muted-foreground">최대</Label>
+										<Input
+											id={`${item.key}-max`}
+											type="number"
+											inputMode="numeric"
+											className="h-8 w-22 rounded-md px-2"
+											min={item.slider.min}
+											max={item.slider.max}
+											step={item.slider.step}
+											value={item.range[1]}
+											disabled={!item.enabled}
+											aria-disabled={!item.enabled}
+											aria-label={`${item.label} 최대 금액`}
+											onChange={event => {
+												const parsed = Number(event.target.value);
+												if (Number.isNaN(parsed)) return;
 
-											const nextMax = clampNumber(parsed, item.slider.min, item.slider.max);
-											const nextMin = Math.min(item.range[0], nextMax);
-											item.setRange([nextMin, nextMax]);
-										}}
-									/>
+												const nextMax = clampNumber(parsed, item.slider.min, item.slider.max);
+												const nextMin = Math.min(item.range[0], nextMax);
+												item.setRange([nextMin, nextMax]);
+											}}
+										/>
+									</div>
 								</div>
 								<div className="flex items-center-safe gap-1">
 									<Label asChild className="text-xs text-muted-foreground"><span>단위</span></Label>
@@ -1225,11 +1223,12 @@ export function OnboardingPage() {
 								key={opts.heading}
 								className="relative group"
 								data-invalid={!!overviewErrorMessages[idx]}
+								data-required={opts.required ? true : undefined}
 							>
 								{opts.required && (
 									<span
 										className={cn(
-											"block px-2 py-1 text-sm text-muted-foreground font-medium",
+											"block px-2 py-1 text-xs font-medium text-primary",
 											overviewErrorMessages[idx] && "text-destructive",
 										)}
 										children="* 필수"
@@ -1243,7 +1242,7 @@ export function OnboardingPage() {
 									variant="ghost"
 									className={cn(
 										"absolute z-999 right-2 text-xs font-medium text-muted-foreground",
-										opts.required ? "top-8" : "top-2",
+										opts.required ? "top-9" : "top-2",
 									)}
 									onClick={() => handleEditClick(idx)}
 									children="수정"

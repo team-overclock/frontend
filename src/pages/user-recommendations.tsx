@@ -57,24 +57,23 @@ function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 			className={cn(
 				"flex flex-col gap-3 p-4 rounded-xl border bg-card shadow-sm",
 				"transition-all duration-200",
-				isClickable && "hover:shadow-md hover:border-primary/40 cursor-pointer",
+				isClickable && "hover:shadow-md hover:border-primary/40 focus-visible:shadow-md focus-visible:outline-primary/40 cursor-pointer",
 				status === "in_progress" && "border-blue-500/30",
 				status === "failed" && "border-destructive/30 opacity-60",
 			)}
 			onClick={isClickable ? onClick : undefined}
+			tabIndex={isClickable ? 0 : undefined}
+			role={isClickable ? "link" : undefined}
 		>
 			{/* 상단: 제목 + 상태 */}
 			<div className="flex items-start justify-between gap-2">
-				<h3 className="font-bold text-base text-foreground/90 break-keep flex-1 leading-tight">
-					{requestData.name ? (
-						<>
-							<Sparkles size={14} className="inline-block mr-1 text-primary align-text-top"/>
-							{requestData.name}
-						</>
-					) : (
-						<span className="text-muted-foreground font-medium text-sm">{item.taskId}</span>
+				<h3
+					className={cn(
+						"font-bold text-base text-foreground/90 break-keep flex-1 leading-tight",
+						!requestData.name && "text-muted-foreground font-medium text-sm"
 					)}
-				</h3>
+					children={requestData.name || "(이름 없음)"}
+				/>
 				<StatusBadge status={status}/>
 			</div>
 
