@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
-import { LoaderIcon, SearchAlertIcon, ClockIcon, Sparkles, MapPin } from "lucide-react";
+import { useNavigate, NavLink } from "react-router";
+import { LoaderIcon, User2Icon, SearchAlertIcon, ClockIcon, Sparkles, MapPin } from "lucide-react";
 
 import type * as schema from "@/shared/schema";
 import { getRecommendations } from "@/lib/api";
@@ -140,7 +140,12 @@ export function UserRecommendationsPage() {
 
 		getRecommendations()
 			.then((res) => {
-				if (!cancelled) setData(res);
+				if (cancelled) return;
+				if (res.total === 0) {
+					navigate(ROUTES.ONBOARDING, { replace: true });
+					return;
+				}
+				setData(res);
 			})
 			.catch((e) => {
 				console.error(e);
@@ -151,7 +156,7 @@ export function UserRecommendationsPage() {
 			});
 
 		return () => { cancelled = true; };
-	}, []);
+	}, [navigate]);
 
 	const handleItemClick = (item: schema.UserRecommendationItem) => {
 		navigate(
@@ -162,7 +167,23 @@ export function UserRecommendationsPage() {
 
 	return (
 		<>
-			<Header heading="내 추천 목록"/>
+			<Header heading="내 추천 목록">
+				<div className="flex items-center-safe gap-2">
+					<Button
+						variant="outline"
+						className="p-4 shadow-md font-bold"
+						asChild
+					>
+						<NavLink to={ROUTES.ONBOARDING} className="no-underline">
+							<Sparkles size={16}/>
+							새 추천 생성
+						</NavLink>
+					</Button>
+					<NavLink to={ROUTES.SETTINGS}>
+						<User2Icon/>
+					</NavLink>
+				</div>
+			</Header>
 
 			{loading ? (
 				<main className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -179,19 +200,7 @@ export function UserRecommendationsPage() {
 						children="다시 시도"
 					/>
 				</main>
-			) : !data || data.total === 0 ? (
-				<main className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground px-6 text-center">
-					<Sparkles size={40} className="opacity-30"/>
-					<div>
-						<p className="font-bold text-lg">아직 추천 요청 내역이 없어요</p>
-						<p className="text-sm mt-1">온보딩에서 조건을 입력하고 첫 추천을 받아보세요!</p>
-					</div>
-					<Button
-						onClick={() => navigate(ROUTES.ONBOARDING)}
-						children="추천 받으러 가기"
-					/>
-				</main>
-			) : (
+			) : data ? (
 				<main className="flex-1 flex flex-col gap-3 py-4 app-container">
 					<p className="text-sm text-muted-foreground font-medium">
 						총 {data.total}건의 추천 요청
@@ -204,7 +213,7 @@ export function UserRecommendationsPage() {
 						/>
 					))}
 				</main>
-			)}
+			) : null}
 		</>
 	);
 }

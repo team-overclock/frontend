@@ -6,7 +6,6 @@ import { RootLayout } from "@/layouts/RootLayout";
 import { LocalAuthLayout } from "@/layouts/LocalAuthLayout";
 import { ServerAuthLayout } from "@/layouts/ServerAuthLayout";
 
-import { HomePage } from "@/pages/home";
 import { RecommendationPage } from "@/pages/recommendation";
 import { UserRecommendationsPage } from "@/pages/user-recommendations";
 import { OnboardingPage } from "@/pages/onboarding";
@@ -26,10 +25,6 @@ export const router = createBrowserRouter([
 		path: "",
 		element: <RootLayout/>,
 		children: [
-			{
-				path: ROUTES.HOME,
-				element: <HomePage/>
-			},
 			{
 				path: ROUTES.SIGN_IN,
 				element: <SignPage mode="sign-in"/>
@@ -55,7 +50,7 @@ export const router = createBrowserRouter([
 						element: <RecommendationPage/>
 					},
 					{
-						path: ROUTES.USER_RECOMMENDATIONS,
+						path: ROUTES.HOME,
 						element: <UserRecommendationsPage/>
 					},
 					{
