@@ -344,11 +344,15 @@ const SECTION_OPTIONS: SectionOptions[] = [
 											aria-disabled={!item.enabled}
 											aria-label={`${item.label} 최소 금액`}
 											onChange={event => {
-												const parsed = Number(event.target.value);
-												if (Number.isNaN(parsed)) return;
-
-												const nextMin = clampNumber(parsed, item.slider.min, item.slider.max);
-												const nextMax = Math.max(nextMin, item.range[1]);
+												const value = event.target.valueAsNumber;
+												if (Number.isNaN(value)) return;
+												item.setRange([value, item.range[1]]);
+											}}
+											onBlur={event => {
+												let value = event.target.valueAsNumber;
+												value = Number.isNaN(value) ? item.slider.min : value;
+												const nextMin = clampNumber(value, item.slider.min, item.slider.max);
+												const nextMax = Math.max(nextMin, Number.isFinite(item.range[1]) ? item.range[1] : 0);
 												item.setRange([nextMin, nextMax]);
 											}}
 										/>
@@ -368,10 +372,14 @@ const SECTION_OPTIONS: SectionOptions[] = [
 											aria-disabled={!item.enabled}
 											aria-label={`${item.label} 최대 금액`}
 											onChange={event => {
-												const parsed = Number(event.target.value);
-												if (Number.isNaN(parsed)) return;
-
-												const nextMax = clampNumber(parsed, item.slider.min, item.slider.max);
+												const value = event.target.valueAsNumber;
+												if (Number.isNaN(value)) return;
+												item.setRange([item.range[0], value]);
+											}}
+											onBlur={event => {
+												let value = event.target.valueAsNumber;
+												value = Number.isNaN(value) ? item.slider.min : value;
+												const nextMax = clampNumber(value, item.slider.min, item.slider.max);
 												const nextMin = Math.min(item.range[0], nextMax);
 												item.setRange([nextMin, nextMax]);
 											}}
