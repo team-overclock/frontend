@@ -140,12 +140,12 @@ function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 				<div className="flex gap-4 text-xs">
 					{(salePrice?.min || salePrice?.max) && (
 						<p className="font-semibold text-primary">
-							매매 {formatPriceUnit(salePrice.min).join(" ")} ~ {formatPriceUnit(requestData.salePrice!.max!).join(" ")}
+							매매 {formatPriceUnit(salePrice.min).join(" ")} ~ {!!salePrice.max && formatPriceUnit(salePrice.max).join(" ")}
 						</p>
 					)}
 					{(jeonsePrice?.min || jeonsePrice?.max) && (
 						<p className="font-semibold text-indigo-500">
-							전세 {formatPriceUnit(jeonsePrice.min).join(" ")} ~ {formatPriceUnit(jeonsePrice.max).join(" ")}
+							전세 {formatPriceUnit(jeonsePrice.min).join(" ")} ~ {!!jeonsePrice.max && formatPriceUnit(jeonsePrice.max).join(" ")}
 						</p>
 					)}
 				</div>
