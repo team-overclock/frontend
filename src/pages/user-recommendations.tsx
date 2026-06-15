@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 
 
 const HIGH_SCHOOL_MAX_COUNT = 3;
+const RETRY_REQUEST_MS = 1500;
 
 const STATUS_MAP: Record<
 	schema.RecommendationStatus | "isNew",
@@ -205,22 +206,30 @@ export function UserRecommendationsPage() {
 	useEffect(() => {
 		let cancelled = false;
 
-		getRecommendations()
-			.then((res) => {
-				if (cancelled) return;
-				if (res.total === 0) {
-					navigate(ROUTES.ONBOARDING, { replace: true });
-					return;
-				}
-				setData(res);
-			})
-			.catch((e) => {
-				console.error(e);
-				if (!cancelled) setError("추천 목록을 불러오지 못했어요.");
-			})
-			.finally(() => {
-				if (!cancelled) setLoading(false);
-			});
+		const fetchData = () => {
+			getRecommendations()
+				.then((res) => {
+					if (cancelled) return;
+					if (res.total === 0) {
+						navigate(ROUTES.ONBOARDING, { replace: true });
+						return;
+					}
+					setData(res);
+					const anyProgress = res.items.some(x => x.status === "in_progress");
+					if (anyProgress) {
+						setTimeout(() => { if (!cancelled) fetchData(); }, RETRY_REQUEST_MS);
+					}
+				})
+				.catch((e) => {
+					console.error(e);
+					if (!cancelled) setError("추천 목록을 불러오지 못했어요.");
+				})
+				.finally(() => {
+					if (!cancelled) setLoading(false);
+				});
+		};
+
+		fetchData();
 
 		return () => { cancelled = true; };
 	}, [navigate]);
