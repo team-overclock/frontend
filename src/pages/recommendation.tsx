@@ -52,7 +52,7 @@ type LocalState = "is_pending" ;
 type RecommendationRequestState = LocalState | schema.RecommendationStatus;
 
 const sheetId = "sheet";
-const defaultPoint: schema.MapCoordinate = { lat: 33.450701, lng: 126.570667 };
+const defaultPoint: schema.MapCoordinate = { lat: 37.566317, lng: 126.977250 };
 
 
 
@@ -162,7 +162,7 @@ const AutoBoundsSetter = ({
 		}
 	}, [setBound, enabled]);
 
-	if (!button) {
+	if (!points.length || !button) {
 		return null;
 	}
 
@@ -414,13 +414,13 @@ function RecommendationMap({
 		() => properties?.map(x => ({
 			lat: x.address.latitude,
 			lng: x.address.longitude,
-		})) ?? [defaultPoint],
+		})) ?? [],
 		[properties],
 	);
 
 	return (
 		<KakaoMap
-			center={points[0]}
+			center={points[0] ?? defaultPoint}
 			onClick={() => onActiveChange(null)}
 			style={{
 				width: "100%",
@@ -621,12 +621,14 @@ interface ActivePropertyItem {
 }
 
 function RecommendationItems({
+	status,
 	items,
 	activeItem,
 	className,
 	...props
 }: {
 	isMobile: boolean;
+	status: RecommendationRequestState;
 	items: PropertySummaryWithRank[];
 	activeItem?: ActivePropertyItem | null;
 	onActiveChange: (id: number) => void;
@@ -654,6 +656,9 @@ function RecommendationItems({
 				className,
 			)}
 		>
+			{status === "completed" && !items.length && (
+				<li className="h-64 text-center font-medium">조건에 맞는 집을 찾지 못했어요</li>
+			)}
 			{items.map((item) => (
 				<li
 					key={item.id}
@@ -1065,6 +1070,7 @@ export function RecommendationPage() {
 			{!isMobile && (
 				<RecommendationSheet
 					isMobile={false}
+					status={recState}
 					items={sortedProperties}
 					activeItem={activePropertyItem}
 					hasSalePrice={hasSalePrice}
@@ -1181,6 +1187,7 @@ export function RecommendationPage() {
 							<ScrollArea className="w-svw whitespace-nowrap h-full">
 								<RecommendationSheet
 									isMobile
+									status={recState}
 									items={sortedProperties}
 									activeItem={activePropertyItem}
 									hasSalePrice={hasSalePrice}
