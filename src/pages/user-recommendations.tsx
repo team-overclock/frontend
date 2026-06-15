@@ -7,6 +7,7 @@ import { getRecommendations } from "@/lib/api";
 import { ROUTES } from "@/shared/routes";
 import { cn } from "@/lib/utils";
 import { formatPriceUnit } from "@/lib/price-unit";
+import { Trophy } from "@/components/trophy";
 import { Header } from "@/components/header";
 import { InfraTypeBadge } from "@/components/infra-type-badge";
 import { Button } from "@/components/ui/button";
@@ -47,10 +48,11 @@ interface RecommendationCardProps {
 }
 
 function RecommendationCard({ item, onClick }: RecommendationCardProps) {
-	const { requestData, status, requestedAt } = item;
+	const { requestData, status, requestedAt, bestProperty } = item;
 	const hasSalePrice = requestData.salePrice?.min != null;
 	const hasJeonsePrice = requestData.jeonsePrice?.min != null;
 	const isClickable = status !== "failed";
+	const bestAddress = bestProperty?.address.roadName ?? bestProperty?.address.landLot ?? bestProperty?.region.name;
 
 	return (
 		<article
@@ -95,6 +97,30 @@ function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 							className="text-xs px-2 py-1"
 						/>
 					))}
+				</div>
+			)}
+
+			{/* 베스트 매물 */}
+			{status === "completed" && (
+				<div className="flex gap-1 flex-wrap-reverse rounded-lg bg-primary/5 border border-primary/15 p-2.5 text-xs">
+					{!bestProperty ? (
+						"조건에 맞는 집을 찾지 못했어요"
+					) : (
+						<>
+							<div className="flex-1 flex flex-col gap-1">
+								<Trophy rank={1}/>
+								<span className="font-bold text-foreground/80 truncate">{bestProperty.name}</span>
+								<p className="flex items-center gap-1 text-muted-foreground">
+									<MapPin size={10} className="shrink-0"/>
+									<span className="truncate">{bestAddress}</span>
+								</p>
+							</div>
+							<span className="flex gap-0.5 items-center-safe justify-center-safe font-bold text-indigo-500">
+								<Sparkles size={10}/>
+								{Math.round(bestProperty.score)}점
+							</span>
+						</>
+					)}
 				</div>
 			)}
 

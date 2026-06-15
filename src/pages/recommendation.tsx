@@ -16,6 +16,7 @@ import { Tooltip } from "@/components/tooltip";
 import { Header } from "@/components/header";
 import { FloatingLabelInput } from "@/components/input";
 import { InfraTypeBadge } from "@/components/infra-type-badge";
+import { Trophy } from "@/components/trophy";
 import { SchoolDistrictBox } from "@/components/school-district-box";
 import {
 	Drawer,
@@ -475,21 +476,6 @@ function RecommendationMap({
 }
 
 
-
-function Trophy({ rank }: { rank: number }) {
-	const imoji = ["🥇", "🥈", "🥉"][rank - 1] || "";
-	return (
-		<span
-			className={cn(
-				"font-bold text-foreground",
-				rank === 1 && "text-yellow-500",
-				rank === 2 && "text-gray-400",
-				rank === 3 && "text-yellow-800",
-			)}
-			children={`${imoji} ${rank}위`.trim()}
-		/>
-	);
-}
 
 function ScoreGauge({
 	score,

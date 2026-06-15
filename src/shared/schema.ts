@@ -337,6 +337,7 @@ export const userRecommendationItem = recommendationCreateOutput.safeExtend({
 	requestedAt: datetime,
 	lastViewedAt: datetime,
 	requestData,
+	bestProperty: recommendationPropertySummary.omit({ infrastructure: true }).nullable(),
 });
 
 /**
