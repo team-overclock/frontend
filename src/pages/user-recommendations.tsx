@@ -140,7 +140,7 @@ function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 				<div className="flex gap-4 text-xs">
 					{(salePrice?.min || salePrice?.max) && (
 						<p className="font-semibold text-primary">
-							매매 {formatPriceUnit(salePrice.min).join(" ")} ~ {formatPriceUnit(requestData.salePrice!.max!).join(" ")}~
+							매매 {formatPriceUnit(salePrice.min).join(" ")} ~ {formatPriceUnit(requestData.salePrice!.max!).join(" ")}
 						</p>
 					)}
 					{(jeonsePrice?.min || jeonsePrice?.max) && (
