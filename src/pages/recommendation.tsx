@@ -1,13 +1,14 @@
 import { useRef, useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams, useLocation, type Location } from "react-router";
-import { TagIcon, CheckCheckIcon, SettingsIcon, LoaderIcon, SearchAlertIcon, X, MapPin, Sparkles } from "lucide-react";
+import { TagIcon, CheckCheckIcon, SettingsIcon, LoaderIcon, SearchAlertIcon, X, MapPin, Sparkles, Trash2Icon } from "lucide-react";
 import { useKakaoLoader, useMap, Map as KakaoMap, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
 
 import * as env from "@/shared/env";
 import type * as schema from "@/shared/schema";
 import { RETRY_DELAY_MS, sleep } from "@/shared/common";
 import { cn } from "@/lib/utils";
-import { getRecommendation, getRecommendationProperty, updateRecommendation } from "@/lib/api";
+import { getRecommendation, getRecommendationProperty, updateRecommendation, deleteSearchLog } from "@/lib/api";
+import { ROUTES } from "@/shared/routes";
 import { formatPriceUnit } from "@/lib/price-unit";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -744,10 +745,21 @@ function RecommendationRequestDataDialog({
 	const schoolDistrictTypesStore = useSchoolDistrictTypesStore();
 
 	const [recName, setRecName] = useState(recommendationName);
+	const [deleting, setDeleting] = useState(false);
 
 	useEffect(() => {
 		schoolDistrictTypesStore.fetch();
 	}, [schoolDistrictTypesStore]);
+
+	const onDelete = useCallback(async () => {
+		setDeleting(true);
+		try {
+			await deleteSearchLog(taskId);
+			navigation(ROUTES.HOME, { replace: true });
+		} finally {
+			setDeleting(false);
+		}
+	}, [taskId, navigation]);
 
 	const onSubmit = useCallback<React.SubmitEventHandler<HTMLFormElement>>(e => {
 		e.preventDefault();
@@ -865,6 +877,18 @@ function RecommendationRequestDataDialog({
 						</div>
 					</div>
 				</div>
+				<DialogFooter>
+					<Button
+						type="button"
+						variant="destructive"
+						onClick={onDelete}
+						disabled={deleting}
+						className="gap-1.5"
+					>
+						<Trash2Icon size={15}/>
+						삭제
+					</Button>
+				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	);

@@ -197,6 +197,16 @@ export async function getRecommendations() {
 }
 
 /**
+ * 사용자 추천 생성 요청 목록 삭제
+ */
+export async function deleteSearchLog(taskId: string) {
+	return request({
+		method: "DELETE",
+		url: `/users/me/recommendations/${taskId}`,
+	});
+}
+
+/**
  * 선택한 조건 기반 추천 요청
  */
 export async function createRecommendation(data: schema.RecommendationCreateInput) {
