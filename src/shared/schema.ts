@@ -335,7 +335,7 @@ export const recommendationPropertyDetailOutput = z.object({
 export const userRecommendationItem = recommendationCreateOutput.safeExtend({
 	status: recommendationStatus,
 	requestedAt: datetime,
-	lastViewedAt: datetime,
+	lastViewedAt: datetime.nullable(),
 	requestData,
 	bestProperty: recommendationPropertySummary.omit({ infrastructure: true }).nullable(),
 });

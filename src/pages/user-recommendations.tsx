@@ -15,14 +15,25 @@ import { Badge } from "@/components/ui/badge";
 
 
 
-const STATUS_MAP: Record<schema.RecommendationStatus, { label: string; className: string }> = {
+const STATUS_MAP: Record<
+	schema.RecommendationStatus | "isNew",
+	{ label: string; className: string }
+> = {
+	isNew: { label: "미확인", className: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30 animate-pulse" },
 	completed: { label: "완료", className: "bg-green-500/10 text-green-600 border-green-500/30" },
 	in_progress: { label: "처리 중", className: "bg-blue-500/10 text-blue-600 border-blue-500/30" },
 	failed: { label: "실패", className: "bg-destructive/10 text-destructive border-destructive/30" },
 };
 
-function StatusBadge({ status }: { status: schema.RecommendationStatus }) {
-	const { label, className } = STATUS_MAP[status];
+function StatusBadge({
+	isNew,
+	status,
+}: {
+	isNew?: boolean;
+	status: schema.RecommendationStatus;
+}) {
+	const { label, className } = STATUS_MAP[isNew ? "isNew" : status];
+
 	return (
 		<Badge
 			variant="outline"
@@ -48,11 +59,12 @@ interface RecommendationCardProps {
 }
 
 function RecommendationCard({ item, onClick }: RecommendationCardProps) {
-	const { requestData, status, requestedAt, bestProperty } = item;
+	const { requestData, status, requestedAt, bestProperty, lastViewedAt } = item;
 	const hasSalePrice = requestData.salePrice?.min != null;
 	const hasJeonsePrice = requestData.jeonsePrice?.min != null;
 	const isClickable = status !== "failed";
 	const bestAddress = bestProperty?.address.roadName ?? bestProperty?.address.landLot ?? bestProperty?.region.name;
+	const isNew = status === "completed" && lastViewedAt === null;
 
 	return (
 		<article
@@ -76,7 +88,7 @@ function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 					)}
 					children={requestData.name || "(이름 없음)"}
 				/>
-				<StatusBadge status={status}/>
+				<StatusBadge status={status} isNew={isNew}/>
 			</div>
 
 			{/* 지역 */}
