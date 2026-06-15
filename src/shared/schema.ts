@@ -256,7 +256,7 @@ export const infraDetail = z.object({
  */
 export const recommendationPropertySummary = z.object({
 	id: nonNegativeInt,
-	name: nonEmptyString,
+	name: nonEmptyString.nullable(),
 	score: nonNegativeFloat,
 	region: regionItem,
 	address,

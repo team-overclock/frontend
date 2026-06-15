@@ -219,9 +219,13 @@ function PropertyAddress({
 		// 건물명 및 주소
 		<div className="flex justify-between items-start gap-2">
 			<div className="flex flex-col gap-0.5">
-				<h4 className="font-extrabold text-base tracking-tight leading-tight text-foreground/90 break-keep">
-					{name}
-				</h4>
+				<h4
+					className={cn(
+						"font-extrabold text-base tracking-tight leading-tight text-foreground/90 break-keep",
+						!name && "text-muted-foreground font-medium text-sm"
+					)}
+					children={name || "(알 수 없음)"}
+				/>
 				<div className="flex items-center gap-1 text-xs text-muted-foreground">
 					<MapPin size={12} className="shrink-0"/>
 					<span className="truncate">{address.landLot || address.roadName || region?.name}</span>
@@ -572,7 +576,13 @@ function PropertySummaryBox(p: (
 		>
 			<Trophy rank={p.rank}/>
 			<ScoreGauge score={p.score}/>
-			<p className="font-bold">{p.name}</p>
+			<p
+				className={cn(
+					"font-bold",
+					!p.name && "text-muted-foreground font-medium"
+				)}
+				children={p.name || "(알 수 없음)"}
+			/>
 			<p className="text-xs text-muted-foreground">{p.region?.name}</p>
 			{p.isMobile && <>
 				{p.salePrice?.min && <PriceBox label="매매" price={p.salePrice.min}/>}

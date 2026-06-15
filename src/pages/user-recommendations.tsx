@@ -160,7 +160,13 @@ function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 						<>
 							<div className="flex-1 flex flex-col gap-1">
 								<Trophy rank={1}/>
-								<span className="font-bold text-foreground/80 truncate">{bestProperty.name}</span>
+								<span
+									className={cn(
+										"font-bold text-foreground/80 truncate",
+										!bestProperty.name && "text-muted-foreground font-medium"
+									)}
+									children={bestProperty.name || "(알 수 없음)"}
+								/>
 								<p className="flex items-center gap-1 text-muted-foreground">
 									<MapPin size={10} className="shrink-0"/>
 									<span className="truncate">{bestAddress}</span>
