@@ -42,11 +42,14 @@ export function convertToNumber(value: string) {
  * @param value 숫자 가격 (예: 200000000, 5000000)
  * @returns 숫자 가격과 단위 문자열의 튜플 (예: [20, "억 원"], [500, "만 원"])
  */
-export function formatPriceUnit(value: number): [number, PriceUnit] {
+export function formatPriceUnit(value?: number | null): [number, PriceUnit | "원"] {
 	let number: number;
-	let unit: PriceUnit;
+	let unit: PriceUnit | "원";
 
-	if (value >= 10_000 * 10_000) {
+	if (!value) {
+		number = 0;
+		unit = "원";
+	} else if (value >= 10_000 * 10_000) {
 		number = value / (10_000 * 10_000);
 		unit = "억 원";
 	} else {

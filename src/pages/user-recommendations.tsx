@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 
 
 
+const HIGH_SCHOOL_MAX_COUNT = 3;
+
 const STATUS_MAP: Record<
 	schema.RecommendationStatus | "isNew",
 	{ label: string; className: string }
@@ -60,8 +62,8 @@ interface RecommendationCardProps {
 
 function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 	const { requestData, status, requestedAt, bestProperty, lastViewedAt } = item;
-	const hasSalePrice = requestData.salePrice?.min != null;
-	const hasJeonsePrice = requestData.jeonsePrice?.min != null;
+	const salePrice = requestData.salePrice;
+	const jeonsePrice = requestData.jeonsePrice;
 	const isClickable = status !== "failed";
 	const bestAddress = bestProperty?.address.roadName ?? bestProperty?.address.landLot ?? bestProperty?.region.name;
 	const isNew = status === "completed" && lastViewedAt === null;
@@ -112,8 +114,45 @@ function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 				</div>
 			)}
 
+			{!!requestData.schoolDistricts?.length && (
+				<div className="flex flex-wrap gap-1">
+					{requestData.schoolDistricts.map(d => (
+						<span
+							key={d.type}
+							className="text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium"
+						>
+							{d.label}
+						</span>
+					))}
+				</div>
+			)}
+
+			{!!requestData.highSchools?.length && (
+				<p className="text-[11px] text-muted-foreground leading-relaxed">
+					🏫 {requestData.highSchools.slice(0, HIGH_SCHOOL_MAX_COUNT).map(s => s.name).join(", ")}
+					{requestData.highSchools.length > HIGH_SCHOOL_MAX_COUNT && ` 외 ${requestData.highSchools.length - HIGH_SCHOOL_MAX_COUNT}개`}
+				</p>
+			)}
+
+			{/* 가격 정보 */}
+			{(salePrice?.min || salePrice?.max || jeonsePrice?.max || jeonsePrice?.min) && (
+				<div className="flex gap-4 text-xs">
+					{(salePrice?.min || salePrice?.max) && (
+						<p className="font-semibold text-primary">
+							매매 {formatPriceUnit(salePrice.min).join(" ")} ~ {formatPriceUnit(requestData.salePrice!.max!).join(" ")}~
+						</p>
+					)}
+					{(jeonsePrice?.min || jeonsePrice?.max) && (
+						<p className="font-semibold text-indigo-500">
+							전세 {formatPriceUnit(jeonsePrice.min).join(" ")} ~ {formatPriceUnit(jeonsePrice.max).join(" ")}
+						</p>
+					)}
+				</div>
+			)}
+
 			{/* 베스트 매물 */}
-			{status === "completed" && (
+			{status === "completed" && <>
+				<hr/>
 				<div className="flex gap-1 flex-wrap-reverse rounded-lg bg-primary/5 border border-primary/15 p-2.5 text-xs">
 					{!bestProperty ? (
 						"조건에 맞는 집을 찾지 못했어요"
@@ -134,23 +173,8 @@ function RecommendationCard({ item, onClick }: RecommendationCardProps) {
 						</>
 					)}
 				</div>
-			)}
-
-			{/* 가격 정보 */}
-			{(hasSalePrice || hasJeonsePrice) && (
-				<div className="flex gap-4 text-xs">
-					{hasSalePrice && (
-						<p className="font-semibold text-primary">
-							매매 {formatPriceUnit(requestData.salePrice!.min!).join(" ")}~
-						</p>
-					)}
-					{hasJeonsePrice && (
-						<p className="font-semibold text-indigo-500">
-							전세 {formatPriceUnit(requestData.jeonsePrice!.min!).join(" ")}~
-						</p>
-					)}
-				</div>
-			)}
+				<hr/>
+			</>}
 
 			{/* 요청 일시 */}
 			<p className="flex items-center gap-1 text-[11px] text-muted-foreground mt-auto">
